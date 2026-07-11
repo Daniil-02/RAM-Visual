@@ -1,0 +1,138 @@
+/* Основной фон для окон */
+QWidget#MainWindow, QWidget#OverlayWindow {
+    background-color: #121212;
+    color: #E0E0E0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px;
+}
+
+/* Окно оверлея: полупрозрачное, с закругленными краями (если применимо на уровне виджета) */
+QWidget#OverlayWidget {
+    background-color: rgba(18, 18, 18, 200);
+    border: 1px solid #333333;
+    border-radius: 10px;
+}
+
+/* Стилизация заголовков и текста в оверлее */
+QLabel#ProcessNameLabel {
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    padding-bottom: 5px;
+}
+
+QLabel.MetricValue {
+    color: #00E676; /* Неоново-зеленый акцент для значений */
+    font-size: 18px;
+    font-weight: bold;
+}
+
+QLabel.MetricLabel {
+    color: #AAAAAA;
+    font-size: 12px;
+}
+
+/* Списки */
+QListWidget {
+    background-color: #1E1E1E;
+    color: #E0E0E0;
+    border: 1px solid #333333;
+    border-radius: 5px;
+    outline: none;
+    padding: 5px;
+}
+
+QListWidget::item {
+    padding: 10px;
+}
+
+QListWidget::item:selected {
+    color: #FFFFFF;
+}
+
+/* Поле ввода (поиск) */
+QLineEdit {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    border-radius: 5px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+QLineEdit:focus {
+    border: 1px solid #2962FF;
+}
+
+/* Кнопки */
+QPushButton {
+    background-color: #2962FF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    font-weight: bold;
+    transition: background-color 0.2s, border-color 0.2s;
+    cursor: pointing-hand;
+}
+
+QPushButton:hover {
+    background-color: #3377FF;
+}
+
+QPushButton:pressed {
+    background-color: #0D266B;
+}
+
+/* Скроллбары */
+QScrollBar:vertical {
+    border: none;
+    background: transparent;
+    width: 6px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.15);
+    min-height: 20px;
+    border-radius: 3px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+/* Стилизация контекстных меню */
+QMenu {
+    background-color: #1E1E1E;
+    color: #E0E0E0;
+    border: 1px solid #333333;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+QMenu::item {
+    padding: 8px 20px 8px 20px;
+    border-radius: 3px;
+    background-color: transparent;
+}
+
+QMenu::item:selected {
+    background-color: #2962FF;
+    color: #FFFFFF;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #333333;
+    margin: 4px 10px 4px 10px;
+}

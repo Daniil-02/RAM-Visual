@@ -186,6 +186,31 @@ class OverlayWindow(QWidget):
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         
+        # Мягкие эффекты выделения для всего контекстного меню
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #1E1E1E;
+                color: #E0E0E0;
+                border: 1px solid #333333;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+                margin: 2px;
+            }
+            QMenu::item:selected {
+                background-color: rgba(41, 98, 255, 0.15); /* Мягкое прозрачное выделение */
+                color: #FFFFFF;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #333333;
+                margin: 4px 8px;
+            }
+        """)
+        
         return_action = QAction("Вернуться", self)
         return_action.triggered.connect(self.request_return.emit)
         
@@ -196,37 +221,41 @@ class OverlayWindow(QWidget):
         # Интегрированный ползунок прозрачности
         opacity_widget = QWidget()
         opacity_layout = QHBoxLayout(opacity_widget)
-        opacity_layout.setContentsMargins(15, 5, 15, 5)
+        opacity_layout.setContentsMargins(12, 5, 12, 5)
         opacity_layout.setSpacing(10)
         
-        lbl_title = QLabel("Прозр:")
-        lbl_title.setStyleSheet("color: #E0E0E0;")
+        lbl_title = QLabel("Прозрачность:")
+        lbl_title.setStyleSheet("color: #E0E0E0; background: transparent;")
         
         slider = QSlider(Qt.Orientation.Horizontal)
-        slider.setMinimumWidth(150)
+        slider.setMinimumWidth(180)
         slider.setRange(20, 100)
         
+        # Элегантный, тонкий дизайн ползунка
         slider.setStyleSheet("""
+            QSlider {
+                background: transparent;
+            }
             QSlider::groove:horizontal {
-                border: 1px solid #444;
-                height: 6px;
-                background: #2C2C2C;
-                border-radius: 3px;
+                border: none;
+                height: 3px;
+                background: #333333;
+                border-radius: 1px;
             }
             QSlider::sub-page:horizontal {
                 background: #2962FF;
-                border-radius: 3px;
+                border-radius: 1px;
             }
             QSlider::handle:horizontal {
                 background: #FFFFFF;
-                border: 1px solid #1C44B2;
-                width: 16px;
-                margin-top: -5px;
-                margin-bottom: -5px;
-                border-radius: 8px;
+                border: none;
+                width: 10px;
+                margin-top: -3px;
+                margin-bottom: -4px;
+                border-radius: 5px;
             }
             QSlider::handle:horizontal:hover {
-                background: #E0E0E0;
+                background: #B3C6FF;
             }
         """)
         

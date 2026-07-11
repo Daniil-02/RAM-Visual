@@ -4,11 +4,11 @@ import urllib.request
 import zipfile
 import io
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from ui.overlay import OverlayWindow
 from core.monitor import SystemMonitor
 from core.hotkeys import HotkeyListener
+from core.config import load_config, save_config
 
 class AppManager:
     def __init__(self):
@@ -17,6 +17,7 @@ class AppManager:
         self.app.setQuitOnLastWindowClosed(False) 
         
         self.load_styles()
+        self.config = load_config()
         
         self.monitor = None
         self.overlay = None
@@ -27,6 +28,13 @@ class AppManager:
         self.main_window.toggle_overlay_requested.connect(self.toggle_overlay)
         self.main_window.quit_requested.connect(self.force_quit)
         self.main_window.ping_toggled.connect(self.on_ping_toggled)
+        self.main_window.opacity_changed.connect(self.on_opacity_changed)
+        self.main_window.hotkey_change_requested.connect(self.on_hotkey_change)
+        
+        # Восстанавливаем настройки из конфига
+        self.main_window.set_opacity_from_config(self.config["opacity"])
+        self.main_window.set_ping_from_config(self.config["ping_enabled"])
+        
         self.main_window.show()
         
     def load_styles(self):
@@ -55,8 +63,9 @@ class AppManager:
         # Если позиция была сохранена ранее, восстанавливаем её
         if self.last_overlay_pos is not None:
             self.overlay.move(self.last_overlay_pos)
-            
 
+        # Применяем прозрачность из конфига
+        self.overlay.setWindowOpacity(self.config["opacity"])
         self.overlay.show()
         self.overlay.toggle_ping_visibility(self.main_window.is_ping_enabled())
         
@@ -66,8 +75,8 @@ class AppManager:
         self.monitor.metrics_updated.connect(self.overlay.update_metrics)
         self.monitor.start()
         
-        # Запускаем перехват горячих клавиш
-        self.hotkey_listener = HotkeyListener("alt+f10")
+        # Запускаем перехват горячих клавиш (используем хоткей из конфига)
+        self.hotkey_listener = HotkeyListener(self.config["hotkey"])
         self.hotkey_listener.toggle_overlay.connect(self.toggle_overlay)
         self.hotkey_listener.start()
         
@@ -87,6 +96,37 @@ class AppManager:
             self.overlay.toggle_ping_visibility(is_enabled)
         if self.monitor:
             self.monitor.set_ping_enabled(is_enabled)
+        # Сохраняем в конфиг
+        self.config["ping_enabled"] = is_enabled
+        save_config(self.config)
+
+    def on_opacity_changed(self, opacity):
+        """Изменение прозрачности оверлея и сохранение в конфиг."""
+        if self.overlay:
+            self.overlay.setWindowOpacity(opacity)
+        self.config["opacity"] = opacity
+        save_config(self.config)
+
+    def on_hotkey_change(self, new_hotkey):
+        """Переназначение хоткея на лету и сохранение в конфиг."""
+        if self.hotkey_listener:
+            success = self.hotkey_listener.rebind(new_hotkey)
+            if success:
+                self.config["hotkey"] = new_hotkey
+                save_config(self.config)
+                self.main_window.tray_icon.showMessage(
+                    "RAM Visual",
+                    f"Хоткей изменен на: {new_hotkey}",
+                    self.main_window.tray_icon.MessageIcon.Information,
+                    2000
+                )
+            else:
+                self.main_window.tray_icon.showMessage(
+                    "RAM Visual",
+                    f"Ошибка: не удалось установить хоткей '{new_hotkey}'",
+                    self.main_window.tray_icon.MessageIcon.Warning,
+                    3000
+                )
 
     def return_to_main(self):
         # Останавливаем мониторинг и хоткеи, закрываем оверлей

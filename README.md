@@ -27,3 +27,5 @@ A clean, customizable, frameless desktop overlay for real-time hardware performa
    ```bash
    python main.py
    ```
+
+   > ⚠️ **Note:** It is highly recommended to run your terminal or the application **as Administrator**. This ensures the overlay has proper permissions to accurately read hardware temperatures and detect active system processes without restrictions.

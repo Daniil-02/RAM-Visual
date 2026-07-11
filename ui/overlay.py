@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog
-from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog, QSlider
+from PyQt6.QtGui import QAction, QWidgetAction
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, pyqtProperty
 
 class OverlayWindow(QWidget):
@@ -194,20 +194,20 @@ class OverlayWindow(QWidget):
         pin_action.triggered.connect(self.toggle_pin)
 
         opacity_menu = QMenu("Прозрачность", self)
-        opacity_group = QActionGroup(self)
-        opacity_group.setExclusive(True)
-        current_opacity = self.windowOpacity()
         
-        for label, value in [("100%", 1.0), ("80%", 0.8), ("60%", 0.6), ("40%", 0.4)]:
-            action = QAction(label, self)
-            action.setCheckable(True)
-            action.setData(value)
-            if abs(current_opacity - value) < 0.01:
-                action.setChecked(True)
-            opacity_group.addAction(action)
-            opacity_menu.addAction(action)
-            
-        opacity_group.triggered.connect(lambda action: self.opacity_changed.emit(action.data()))
+        slider = QSlider(Qt.Orientation.Horizontal, self)
+        slider.setRange(20, 100)
+        current_opacity = int(self.windowOpacity() * 100)
+        slider.setValue(current_opacity)
+        
+        # Динамическое обновление прозрачности окна при перетаскивании
+        slider.valueChanged.connect(lambda val: self.setWindowOpacity(val / 100.0))
+        # Сохранение в конфиг только при отпускании ползунка
+        slider.sliderReleased.connect(lambda: self.opacity_changed.emit(slider.value() / 100.0))
+        
+        slider_action = QWidgetAction(self)
+        slider_action.setDefaultWidget(slider)
+        opacity_menu.addAction(slider_action)
 
         hotkey_action = QAction("Сменить хоткей...", self)
         hotkey_action.triggered.connect(self._on_hotkey_change)

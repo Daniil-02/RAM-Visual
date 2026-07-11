@@ -4,7 +4,8 @@ import os
 DEFAULT_CONFIG = {
     "hotkey": "alt+f10",
     "opacity": 1.0,
-    "ping_enabled": True
+    "ping_enabled": True,
+    "is_pinned": False
 }
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")

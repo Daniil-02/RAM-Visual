@@ -58,6 +58,10 @@ class AppManager:
         self.overlay.request_return.connect(self.return_to_main)
         self.overlay.opacity_changed.connect(self.on_opacity_changed)
         self.overlay.hotkey_change_requested.connect(self.on_hotkey_change)
+        self.overlay.pin_toggled.connect(self.on_pin_toggled)
+        
+        # Применяем сохраненный флаг закрепления
+        self.overlay.is_pinned = self.config.get("is_pinned", False)
         
         # Если позиция была сохранена ранее, восстанавливаем её
         if self.last_overlay_pos is not None:
@@ -104,6 +108,11 @@ class AppManager:
         if self.overlay:
             self.overlay.setWindowOpacity(opacity)
         self.config["opacity"] = opacity
+        save_config(self.config)
+
+    def on_pin_toggled(self, is_pinned):
+        """Сохранение состояния закрепления в конфиг."""
+        self.config["is_pinned"] = is_pinned
         save_config(self.config)
 
     def on_hotkey_change(self, new_hotkey):

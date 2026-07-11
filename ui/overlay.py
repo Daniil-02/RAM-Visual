@@ -7,6 +7,7 @@ class OverlayWindow(QWidget):
     request_return = pyqtSignal()
     opacity_changed = pyqtSignal(float)
     hotkey_change_requested = pyqtSignal(str)
+    pin_toggled = pyqtSignal(bool)
     
     def get_current_height(self):
         return self.height()
@@ -307,3 +308,4 @@ class OverlayWindow(QWidget):
 
     def toggle_pin(self):
         self.is_pinned = not self.is_pinned
+        self.pin_toggled.emit(self.is_pinned)

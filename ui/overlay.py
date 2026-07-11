@@ -193,21 +193,63 @@ class OverlayWindow(QWidget):
         pin_action = QAction(pin_text, self)
         pin_action.triggered.connect(self.toggle_pin)
 
-        opacity_menu = QMenu("Прозрачность", self)
+        # Интегрированный ползунок прозрачности
+        opacity_widget = QWidget()
+        opacity_layout = QHBoxLayout(opacity_widget)
+        opacity_layout.setContentsMargins(15, 5, 15, 5)
+        opacity_layout.setSpacing(10)
         
-        slider = QSlider(Qt.Orientation.Horizontal, self)
+        lbl_title = QLabel("Прозр:")
+        lbl_title.setStyleSheet("color: #E0E0E0;")
+        
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setMinimumWidth(150)
         slider.setRange(20, 100)
+        
+        slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #444;
+                height: 6px;
+                background: #2C2C2C;
+                border-radius: 3px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #2962FF;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #FFFFFF;
+                border: 1px solid #1C44B2;
+                width: 16px;
+                margin-top: -5px;
+                margin-bottom: -5px;
+                border-radius: 8px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #E0E0E0;
+            }
+        """)
+        
         current_opacity = int(self.windowOpacity() * 100)
         slider.setValue(current_opacity)
         
-        # Динамическое обновление прозрачности окна при перетаскивании
-        slider.valueChanged.connect(lambda val: self.setWindowOpacity(val / 100.0))
-        # Сохранение в конфиг только при отпускании ползунка
+        lbl_percent = QLabel(f"{current_opacity}%")
+        lbl_percent.setStyleSheet("color: #E0E0E0; font-weight: bold; min-width: 35px;")
+        lbl_percent.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        
+        opacity_layout.addWidget(lbl_title)
+        opacity_layout.addWidget(slider)
+        opacity_layout.addWidget(lbl_percent)
+        
+        def on_slider_moved(val):
+            lbl_percent.setText(f"{val}%")
+            self.setWindowOpacity(val / 100.0)
+            
+        slider.valueChanged.connect(on_slider_moved)
         slider.sliderReleased.connect(lambda: self.opacity_changed.emit(slider.value() / 100.0))
         
         slider_action = QWidgetAction(self)
-        slider_action.setDefaultWidget(slider)
-        opacity_menu.addAction(slider_action)
+        slider_action.setDefaultWidget(opacity_widget)
 
         hotkey_action = QAction("Сменить хоткей...", self)
         hotkey_action.triggered.connect(self._on_hotkey_change)
@@ -218,7 +260,7 @@ class OverlayWindow(QWidget):
         menu.addAction(return_action)
         menu.addAction(pin_action)
         menu.addSeparator()
-        menu.addMenu(opacity_menu)
+        menu.addAction(slider_action)
         menu.addAction(hotkey_action)
         menu.addSeparator()
         menu.addAction(exit_action)

@@ -21,7 +21,7 @@ class OverlayWindow(QWidget):
         super().__init__()
         self.process_name = process_name
         self.init_ui()
-        self.old_pos = None
+        self.drag_offset = None
         self.is_pinned = False
 
     def init_ui(self):
@@ -170,19 +170,39 @@ class OverlayWindow(QWidget):
 
 
 
-    # Логика для перемещения окна (Drag-and-Drop)
+    # Логика для перемещения окна (Drag-and-Drop) с магнитным прилипанием
     def mousePressEvent(self, event):
         if not self.is_pinned and event.button() == Qt.MouseButton.LeftButton:
-            self.old_pos = event.globalPosition().toPoint()
+            # Смещение курсора относительно верхнего левого угла окна
+            self.drag_offset = event.globalPosition().toPoint() - self.pos()
 
     def mouseMoveEvent(self, event):
-        if not self.is_pinned and self.old_pos is not None:
-            delta = event.globalPosition().toPoint() - self.old_pos
-            self.move(self.x() + delta.x(), self.y() + delta.y())
-            self.old_pos = event.globalPosition().toPoint()
+        if not self.is_pinned and hasattr(self, 'drag_offset') and self.drag_offset is not None:
+            # Идеальная теоретическая позиция окна (без прилипания)
+            target_pos = event.globalPosition().toPoint() - self.drag_offset
+            new_x = target_pos.x()
+            new_y = target_pos.y()
+            
+            # Доступная геометрия текущего монитора (с учетом панели задач)
+            screen_geom = self.screen().availableGeometry()
+            snap_margin = 15
+            
+            # Прилипание к левому и правому краю
+            if abs(new_x - screen_geom.left()) <= snap_margin:
+                new_x = screen_geom.left()
+            elif abs(new_x + self.width() - screen_geom.right()) <= snap_margin:
+                new_x = screen_geom.right() - self.width() + 1
+                
+            # Прилипание к верхнему и нижнему краю
+            if abs(new_y - screen_geom.top()) <= snap_margin:
+                new_y = screen_geom.top()
+            elif abs(new_y + self.height() - screen_geom.bottom()) <= snap_margin:
+                new_y = screen_geom.bottom() - self.height() + 1
+            
+            self.move(new_x, new_y)
 
     def mouseReleaseEvent(self, event):
-        self.old_pos = None
+        self.drag_offset = None
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)

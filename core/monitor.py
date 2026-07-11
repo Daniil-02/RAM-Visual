@@ -267,6 +267,49 @@ class SystemMonitor(QThread):
                 pass
             return None
 
+        def get_cpu_power():
+            """Чтение мощности CPU пакета через LibreHardwareMonitor (Вт)."""
+            if not computer: return None
+            try:
+                for hw in computer.Hardware:
+                    if 'Cpu' in str(hw.HardwareType):
+                        hw.Update()
+                        for sensor in hw.Sensors:
+                            # Ищем Package Power — суммарная мощность всего CPU
+                            if str(sensor.SensorType) == 'Power':
+                                name = str(sensor.Name).lower()
+                                if 'package' in name or 'cpu' in name:
+                                    if sensor.Value is not None:
+                                        return float(sensor.Value)
+            except Exception:
+                pass
+            return None
+
+        def get_gpu_power():
+            """Чтение мощности GPU через NVML (NVIDIA). Для AMD — через LibreHardwareMonitor."""
+            # Приоритет: NVML для NVIDIA
+            if self.nvml_inited:
+                try:
+                    if pynvml.nvmlDeviceGetCount() > 0:
+                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                        mw = pynvml.nvmlDeviceGetPowerUsage(handle)  # milliwatts
+                        return mw / 1000.0
+                except Exception:
+                    pass
+            # Fallback: LibreHardwareMonitor для AMD и других
+            if not computer: return None
+            try:
+                for hw in computer.Hardware:
+                    if 'Gpu' in str(hw.HardwareType):
+                        hw.Update()
+                        for sensor in hw.Sensors:
+                            if str(sensor.SensorType) == 'Power':
+                                if sensor.Value is not None:
+                                    return float(sensor.Value)
+            except Exception:
+                pass
+            return None
+
         loop_count = 0
         try:
             while self.running and self.processes:
@@ -312,6 +355,8 @@ class SystemMonitor(QThread):
                     
                     cpu_temp = get_cpu_temp()
                     gpu_temp = get_gpu_temp()
+                    cpu_power = get_cpu_power()
+                    gpu_power = get_gpu_power()
                     
                     if self.ping_enabled:
                         net_io = psutil.net_io_counters()
@@ -331,6 +376,8 @@ class SystemMonitor(QThread):
                         'gpu': gpu,
                         'cpu_temp': cpu_temp,
                         'gpu_temp': gpu_temp,
+                        'cpu_power': cpu_power,
+                        'gpu_power': gpu_power,
                         'ping': self.current_ping,
                         'download_speed': self.current_download_speed
                     })

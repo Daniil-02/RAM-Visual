@@ -113,17 +113,21 @@ class OverlayWindow(QWidget):
         self.lbl_ram_val.setText(f"{metrics['ram']:,.0f} MB".replace(",", " "))
         
         cpu_temp = metrics.get('cpu_temp')
+        cpu_power = metrics.get('cpu_power')
         cpu_temp_str = f"({cpu_temp:.0f}°C)" if cpu_temp is not None else "(N/A °C)"
-        self.lbl_cpu_val.setText(f"{metrics['cpu']:.1f} %  {cpu_temp_str}")
+        cpu_power_str = f" {cpu_power:.0f}W" if cpu_power is not None else ""
+        self.lbl_cpu_val.setText(f"{metrics['cpu']:.1f} %  {cpu_temp_str}{cpu_power_str}")
         
         gpu_val = metrics['gpu']
         gpu_temp = metrics.get('gpu_temp')
+        gpu_power = metrics.get('gpu_power')
         gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
+        gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
         
         if gpu_val < 0:
-            self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}")
+            self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}{gpu_power_str}")
         else:
-            self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}")
+            self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)

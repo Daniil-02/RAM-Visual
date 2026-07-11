@@ -59,12 +59,17 @@ class AppManager:
         self.overlay.opacity_changed.connect(self.on_opacity_changed)
         self.overlay.hotkey_change_requested.connect(self.on_hotkey_change)
         self.overlay.pin_toggled.connect(self.on_pin_toggled)
+        self.overlay.position_changed.connect(self.on_overlay_moved)
         
         # Применяем сохраненный флаг закрепления
         self.overlay.is_pinned = self.config.get("is_pinned", False)
         
-        # Если позиция была сохранена ранее, восстанавливаем её
-        if self.last_overlay_pos is not None:
+        # Восстанавливаем позицию из конфига
+        wx = self.config.get("window_x")
+        wy = self.config.get("window_y")
+        if wx is not None and wy is not None:
+            self.overlay.move(wx, wy)
+        elif self.last_overlay_pos is not None:
             self.overlay.move(self.last_overlay_pos)
 
         # Применяем прозрачность из конфига
@@ -116,6 +121,12 @@ class AppManager:
         self.config["is_pinned"] = is_pinned
         save_config(self.config)
 
+    def on_overlay_moved(self, x, y):
+        """Сохранение новых координат окна в конфиг."""
+        self.config["window_x"] = x
+        self.config["window_y"] = y
+        save_config(self.config)
+
     def on_process_terminated(self):
         """Обработка неожиданного завершения отслеживаемого процесса."""
         from PyQt6.QtWidgets import QMessageBox
@@ -162,7 +173,12 @@ class AppManager:
             self.hotkey_listener = None
         if self.overlay:
             # Сохраняем текущие координаты оверлея перед его закрытием
-            self.last_overlay_pos = self.overlay.pos()
+            pos = self.overlay.pos()
+            self.last_overlay_pos = pos
+            self.config["window_x"] = pos.x()
+            self.config["window_y"] = pos.y()
+            save_config(self.config)
+            
             self.overlay.close()
             self.overlay = None
             

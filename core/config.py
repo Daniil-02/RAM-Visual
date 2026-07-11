@@ -5,7 +5,9 @@ DEFAULT_CONFIG = {
     "hotkey": "alt+f10",
     "opacity": 1.0,
     "ping_enabled": True,
-    "is_pinned": False
+    "is_pinned": False,
+    "window_x": None,
+    "window_y": None
 }
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")

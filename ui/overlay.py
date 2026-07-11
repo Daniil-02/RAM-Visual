@@ -8,6 +8,7 @@ class OverlayWindow(QWidget):
     opacity_changed = pyqtSignal(float)
     hotkey_change_requested = pyqtSignal(str)
     pin_toggled = pyqtSignal(bool)
+    position_changed = pyqtSignal(int, int)
     
     def get_current_height(self):
         return self.height()
@@ -202,7 +203,9 @@ class OverlayWindow(QWidget):
             self.move(new_x, new_y)
 
     def mouseReleaseEvent(self, event):
-        self.drag_offset = None
+        if self.drag_offset is not None:
+            self.drag_offset = None
+            self.position_changed.emit(self.x(), self.y())
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)

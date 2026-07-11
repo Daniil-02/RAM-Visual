@@ -1,10 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu
-from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog
+from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, pyqtProperty
 
 class OverlayWindow(QWidget):
     request_exit = pyqtSignal()
     request_return = pyqtSignal()
+    opacity_changed = pyqtSignal(float)
+    hotkey_change_requested = pyqtSignal(str)
     
     def get_current_height(self):
         return self.height()
@@ -190,6 +192,25 @@ class OverlayWindow(QWidget):
         pin_text = "Открепить" if self.is_pinned else "Закрепить"
         pin_action = QAction(pin_text, self)
         pin_action.triggered.connect(self.toggle_pin)
+
+        opacity_menu = QMenu("Прозрачность", self)
+        opacity_group = QActionGroup(self)
+        opacity_group.setExclusive(True)
+        current_opacity = self.windowOpacity()
+        
+        for label, value in [("100%", 1.0), ("80%", 0.8), ("60%", 0.6), ("40%", 0.4)]:
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(value)
+            if abs(current_opacity - value) < 0.01:
+                action.setChecked(True)
+            opacity_group.addAction(action)
+            opacity_menu.addAction(action)
+            
+        opacity_group.triggered.connect(lambda action: self.opacity_changed.emit(action.data()))
+
+        hotkey_action = QAction("Сменить хоткей...", self)
+        hotkey_action.triggered.connect(self._on_hotkey_change)
         
         exit_action = QAction("Закрыть приложение", self)
         exit_action.triggered.connect(self.request_exit.emit)
@@ -197,9 +218,21 @@ class OverlayWindow(QWidget):
         menu.addAction(return_action)
         menu.addAction(pin_action)
         menu.addSeparator()
+        menu.addMenu(opacity_menu)
+        menu.addAction(hotkey_action)
+        menu.addSeparator()
         menu.addAction(exit_action)
         
         menu.exec(event.globalPos())
+
+    def _on_hotkey_change(self):
+        new_hotkey, ok = QInputDialog.getText(
+            self, "Сменить хоткей",
+            "Введите новую комбинацию клавиш\n(например: alt+f10, ctrl+shift+o):",
+            text="alt+f10"
+        )
+        if ok and new_hotkey.strip():
+            self.hotkey_change_requested.emit(new_hotkey.strip().lower())
 
     def toggle_pin(self):
         self.is_pinned = not self.is_pinned

@@ -3,9 +3,9 @@ import win32gui
 import win32process
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QListWidget, QListWidgetItem, QLineEdit, QPushButton, QLabel,
-                             QSystemTrayIcon, QMenu, QFrame, QCheckBox, QInputDialog)
+                             QSystemTrayIcon, QMenu, QFrame, QCheckBox)
 from PyQt6.QtCore import Qt, QSize, QFileInfo, pyqtSignal, QVariantAnimation
-from PyQt6.QtGui import QIcon, QAction, QColor, QPalette, QCloseEvent, QActionGroup
+from PyQt6.QtGui import QIcon, QAction, QColor, QPalette, QCloseEvent
 from PyQt6.QtWidgets import QFileIconProvider
 
 def get_visible_windows_pids():
@@ -127,8 +127,6 @@ class MainWindow(QMainWindow):
     toggle_overlay_requested = pyqtSignal()
     quit_requested = pyqtSignal()
     ping_toggled = pyqtSignal(bool)
-    opacity_changed = pyqtSignal(float)
-    hotkey_change_requested = pyqtSignal(str)
     
     def __init__(self, on_process_selected):
         super().__init__()
@@ -191,33 +189,11 @@ class MainWindow(QMainWindow):
         self.ping_action.setChecked(True)
         self.ping_action.triggered.connect(self.ping_toggled.emit)
 
-        # --- Подменю прозрачности ---
-        opacity_menu = QMenu("Прозрачность", self)
-        self.opacity_group = QActionGroup(self)
-        self.opacity_group.setExclusive(True)
-        
-        for label, value in [("100%", 1.0), ("80%", 0.8), ("60%", 0.6), ("40%", 0.4)]:
-            action = QAction(label, self)
-            action.setCheckable(True)
-            action.setData(value)
-            if value == 1.0:
-                action.setChecked(True)
-            self.opacity_group.addAction(action)
-            opacity_menu.addAction(action)
-            
-        self.opacity_group.triggered.connect(self._on_opacity_selected)
-
-        # --- Смена хоткея ---
-        hotkey_action = QAction("Сменить хоткей...", self)
-        hotkey_action.triggered.connect(self._on_hotkey_change)
-
         quit_action = QAction("Выход", self)
         quit_action.triggered.connect(self.quit_requested.emit)
         
         tray_menu.addAction(toggle_action)
         tray_menu.addAction(self.ping_action)
-        tray_menu.addMenu(opacity_menu)
-        tray_menu.addAction(hotkey_action)
         tray_menu.addSeparator()
         tray_menu.addAction(quit_action)
         
@@ -243,30 +219,9 @@ class MainWindow(QMainWindow):
     def is_ping_enabled(self):
         return self.ping_action.isChecked()
 
-    def set_opacity_from_config(self, opacity):
-        """Устанавливает галочку в подменю прозрачности по значению из конфига."""
-        for action in self.opacity_group.actions():
-            if action.data() == opacity:
-                action.setChecked(True)
-                break
-
     def set_ping_from_config(self, enabled):
         """Устанавливает состояние чекбокса пинга из конфига."""
         self.ping_action.setChecked(enabled)
-
-    def _on_opacity_selected(self, action):
-        """Обработчик выбора уровня прозрачности."""
-        self.opacity_changed.emit(action.data())
-
-    def _on_hotkey_change(self):
-        """Открытие диалога для ввода нового хоткея."""
-        new_hotkey, ok = QInputDialog.getText(
-            self, "Сменить хоткей",
-            "Введите новую комбинацию клавиш\n(например: alt+f10, ctrl+shift+o):",
-            text="alt+f10"
-        )
-        if ok and new_hotkey.strip():
-            self.hotkey_change_requested.emit(new_hotkey.strip().lower())
 
     def load_processes(self):
         self.list_widget.clear()

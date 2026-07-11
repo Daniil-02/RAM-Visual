@@ -28,11 +28,8 @@ class AppManager:
         self.main_window.toggle_overlay_requested.connect(self.toggle_overlay)
         self.main_window.quit_requested.connect(self.force_quit)
         self.main_window.ping_toggled.connect(self.on_ping_toggled)
-        self.main_window.opacity_changed.connect(self.on_opacity_changed)
-        self.main_window.hotkey_change_requested.connect(self.on_hotkey_change)
         
         # Восстанавливаем настройки из конфига
-        self.main_window.set_opacity_from_config(self.config["opacity"])
         self.main_window.set_ping_from_config(self.config["ping_enabled"])
         
         self.main_window.show()
@@ -59,6 +56,8 @@ class AppManager:
         self.overlay = OverlayWindow(name)
         self.overlay.request_exit.connect(self.force_quit)
         self.overlay.request_return.connect(self.return_to_main)
+        self.overlay.opacity_changed.connect(self.on_opacity_changed)
+        self.overlay.hotkey_change_requested.connect(self.on_hotkey_change)
         
         # Если позиция была сохранена ранее, восстанавливаем её
         if self.last_overlay_pos is not None:

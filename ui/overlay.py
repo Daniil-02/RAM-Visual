@@ -201,7 +201,7 @@ class OverlayWindow(QWidget):
                 margin: 2px;
             }
             QMenu::item:selected {
-                background-color: rgba(41, 98, 255, 0.15); /* Мягкое прозрачное выделение */
+                background-color: rgba(50, 110, 230, 0.15); /* Мягкое прозрачное выделение */
                 color: #FFFFFF;
             }
             QMenu::separator {
@@ -243,7 +243,7 @@ class OverlayWindow(QWidget):
                 border-radius: 1px;
             }
             QSlider::sub-page:horizontal {
-                background: #2962FF;
+                background: #326EE6;
                 border-radius: 1px;
             }
             QSlider::handle:horizontal {

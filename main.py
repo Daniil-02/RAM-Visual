@@ -76,6 +76,7 @@ class AppManager:
         self.monitor = SystemMonitor(pid)
         self.monitor.set_ping_enabled(self.main_window.is_ping_enabled())
         self.monitor.metrics_updated.connect(self.overlay.update_metrics)
+        self.monitor.process_terminated.connect(self.on_process_terminated)
         self.monitor.start()
         
         # Запускаем перехват горячих клавиш (используем хоткей из конфига)
@@ -114,6 +115,20 @@ class AppManager:
         """Сохранение состояния закрепления в конфиг."""
         self.config["is_pinned"] = is_pinned
         save_config(self.config)
+
+    def on_process_terminated(self):
+        """Обработка неожиданного завершения отслеживаемого процесса."""
+        from PyQt6.QtWidgets import QMessageBox
+        
+        if self.monitor:
+            self.monitor.stop()
+            
+        QMessageBox.information(
+            None,
+            "Процесс завершен",
+            "Отслеживаемое приложение было закрыто. Возврат к выбору процессов."
+        )
+        self.return_to_main()
 
     def on_hotkey_change(self, new_hotkey):
         """Переназначение хоткея на лету и сохранение в конфиг."""

@@ -34,12 +34,14 @@ class CoreTempSharedDataEx(ctypes.Structure):
 
 class SystemMonitor(QThread):
     metrics_updated = pyqtSignal(dict)
+    process_terminated = pyqtSignal()
     
     def __init__(self, pid):
         super().__init__()
         self.pid = pid
         self.running = True
         self.paused = False
+        self._is_stopped_manually = False
         self.target_name = None
         self.target_exe = None
         
@@ -345,6 +347,11 @@ class SystemMonitor(QThread):
                         except psutil.NoSuchProcess:
                             del self.processes[pid]
                             
+                    if not self.processes:
+                        if not self._is_stopped_manually:
+                            self.process_terminated.emit()
+                        break
+                            
                     # Нормализуем значение CPU по количеству логических ядер (как в Task Manager)
                     if self.cpu_count and self.cpu_count > 0:
                         total_cpu = total_cpu / self.cpu_count
@@ -402,6 +409,7 @@ class SystemMonitor(QThread):
         self.paused = False
 
     def stop(self):
+        self._is_stopped_manually = True
         self.running = False
         if self.hq:
             try:

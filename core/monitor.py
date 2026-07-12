@@ -403,9 +403,12 @@ class SystemMonitor(QThread):
                         gpu_temp = get_gpu_temp()
                         cpu_power = get_cpu_power()
                         gpu_power = get_gpu_power()
+                        
+                        is_gpu_sleep = (gpu_temp is None) and (gpu_power is None or gpu_power < 1.0)
                     except Exception:
                         gpu = -1.0
                         cpu_temp = gpu_temp = cpu_power = gpu_power = None
+                        is_gpu_sleep = False
                     
                     if self.ping_enabled:
                         net_io = psutil.net_io_counters()
@@ -428,6 +431,7 @@ class SystemMonitor(QThread):
                         'gpu_temp': gpu_temp,
                         'cpu_power': cpu_power,
                         'gpu_power': gpu_power,
+                        'gpu_sleep': is_gpu_sleep,
                         'ping': self.current_ping,
                         'download_speed': self.current_download_speed
                     })

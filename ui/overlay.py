@@ -153,23 +153,29 @@ class OverlayWindow(QWidget):
         gpu_val = metrics['gpu']
         gpu_temp = metrics.get('gpu_temp')
         gpu_power = metrics.get('gpu_power')
-        gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
-        gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
+        gpu_sleep = metrics.get('gpu_sleep', False)
         
-        if gpu_val < 0:
-            self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}{gpu_power_str}")
+        if gpu_sleep:
+            self.lbl_gpu_val.setText("0.0 %  (Sleep)")
+            self.lbl_gpu_val.setStyleSheet("")
         else:
-            self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
+            gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
+            gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
             
-        if gpu_temp is not None:
-            if gpu_temp >= 85:
-                self.lbl_gpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
-            elif gpu_temp >= 80:
-                self.lbl_gpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+            if gpu_val < 0:
+                self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}{gpu_power_str}")
+            else:
+                self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
+                
+            if gpu_temp is not None:
+                if gpu_temp >= 85:
+                    self.lbl_gpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+                elif gpu_temp >= 80:
+                    self.lbl_gpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+                else:
+                    self.lbl_gpu_val.setStyleSheet("")
             else:
                 self.lbl_gpu_val.setStyleSheet("")
-        else:
-            self.lbl_gpu_val.setStyleSheet("")
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)

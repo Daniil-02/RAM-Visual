@@ -138,7 +138,7 @@ class OverlayWindow(QWidget):
         if ram_percent >= 90:
             update_label_style(self.lbl_ram_val, "color: #FF1744; font-weight: bold;")  # Critical Red
         else:
-            update_label_style(self.lbl_ram_val, "")  # Восстановление к стандартному стилю из QSS
+            update_label_style(self.lbl_ram_val, "color: #00E676; font-weight: bold;")  # Восстановление к стандартному стилю
         
         cpu_temp = metrics.get('cpu_temp')
         cpu_power = metrics.get('cpu_power')
@@ -152,9 +152,9 @@ class OverlayWindow(QWidget):
             elif cpu_temp >= 80:
                 update_label_style(self.lbl_cpu_val, "color: #FFD600; font-weight: bold;")  # Warning Yellow
             else:
-                update_label_style(self.lbl_cpu_val, "")
+                update_label_style(self.lbl_cpu_val, "color: #00E676; font-weight: bold;")
         else:
-            update_label_style(self.lbl_cpu_val, "")
+            update_label_style(self.lbl_cpu_val, "color: #00E676; font-weight: bold;")
         
         gpu_val = metrics['gpu']
         gpu_temp = metrics.get('gpu_temp')
@@ -163,7 +163,7 @@ class OverlayWindow(QWidget):
         
         if gpu_sleep:
             self.lbl_gpu_val.setText("0.0 %  (Sleep)")
-            update_label_style(self.lbl_gpu_val, "")
+            update_label_style(self.lbl_gpu_val, "color: #00E676; font-weight: bold;")
         else:
             gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
             gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
@@ -179,9 +179,9 @@ class OverlayWindow(QWidget):
                 elif gpu_temp >= 80:
                     update_label_style(self.lbl_gpu_val, "color: #FFD600; font-weight: bold;")  # Warning Yellow
                 else:
-                    update_label_style(self.lbl_gpu_val, "")
+                    update_label_style(self.lbl_gpu_val, "color: #00E676; font-weight: bold;")
             else:
-                update_label_style(self.lbl_gpu_val, "")
+                update_label_style(self.lbl_gpu_val, "color: #00E676; font-weight: bold;")
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)

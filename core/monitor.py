@@ -321,8 +321,22 @@ class SystemMonitor(QThread):
             return None
 
         loop_count = 0
+        debug_dumped = False
         try:
             while self.running and self.processes:
+                if not debug_dumped and computer:
+                    print("\n=== LHM SENSOR DUMP ===", flush=True)
+                    try:
+                        for hw in computer.Hardware:
+                            hw.Update()
+                            print(f"Hardware: {hw.Name} ({hw.HardwareType})", flush=True)
+                            for sensor in hw.Sensors:
+                                print(f"  Sensor: {sensor.Name} | Type: {sensor.SensorType} | Value: {sensor.Value}", flush=True)
+                    except Exception as e:
+                        print(f"Error during sensor dump: {e}", flush=True)
+                    print("=======================\n", flush=True)
+                    debug_dumped = True
+                    
                 # ГЛАВНАЯ ОПТИМИЗАЦИЯ: полный простой (0% CPU), пока оверлей скрыт
                 if self.paused:
                     time.sleep(0.5)

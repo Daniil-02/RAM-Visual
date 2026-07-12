@@ -133,12 +133,15 @@ class OverlayWindow(QWidget):
             label.style().polish(label)
             label.update()
 
-        self.lbl_ram_val.setText(f"{metrics['ram']:,.0f} MB".replace(",", " "))
-        ram_percent = metrics.get('ram_percent', 0.0)
-        if ram_percent >= 90:
-            update_label_style(self.lbl_ram_val, "color: #FF1744; font-weight: bold;")  # Critical Red
+        ram_mb = metrics['ram']
+        self.lbl_ram_val.setText(f"{ram_mb:,.0f} MB".replace(",", " "))
+        
+        if ram_mb >= 3500:
+            update_label_style(self.lbl_ram_val, "color: #FF2A4B; font-weight: bold;")  # Critical Red
+        elif ram_mb >= 3000:
+            update_label_style(self.lbl_ram_val, "color: #FFC107; font-weight: bold;")  # Warning Yellow
         else:
-            update_label_style(self.lbl_ram_val, "color: #00E676; font-weight: bold;")  # Восстановление к стандартному стилю
+            update_label_style(self.lbl_ram_val, "color: #00E676; font-weight: bold;")  # Normal Green
         
         cpu_temp = metrics.get('cpu_temp')
         cpu_power = metrics.get('cpu_power')

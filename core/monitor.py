@@ -415,15 +415,16 @@ class SystemMonitor(QThread):
                         cpu_temp = get_cpu_temp()
                         gpu_temp = get_gpu_temp(cpu_temp)
                         cpu_power = get_cpu_power()
-                        gpu_power = get_gpu_power()
+                        
+                        if has_igpu():
+                            gpu_power = cpu_power if cpu_power is not None else 0.0
+                        else:
+                            gpu_power = get_gpu_power()
+                            if gpu_power is None or gpu_power <= 0:
+                                gpu_power = 0.0
                         
                         if gpu < 0:
                             gpu = 0.0
-                        if gpu_power is None or gpu_power <= 0:
-                            if has_igpu() and cpu_power is not None:
-                                gpu_power = cpu_power
-                            else:
-                                gpu_power = 0.0
                             
                         is_gpu_sleep = False # Desired sleep state handled implicitly if needed
                     except Exception:

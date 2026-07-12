@@ -225,6 +225,12 @@ class SystemMonitor(QThread):
             computer = Computer()
             computer.IsCpuEnabled = True
             computer.IsGpuEnabled = True
+            computer.IsMotherboardEnabled = True
+            computer.IsControllerEnabled = True
+            computer.IsMemoryEnabled = True
+            computer.IsNetworkEnabled = True
+            computer.IsStorageEnabled = True
+            computer.IsBatteryEnabled = True
             computer.Open()
         except Exception as e:
             print(f"Ошибка загрузки LibreHardwareMonitorLib: {e}", flush=True)
@@ -238,7 +244,7 @@ class SystemMonitor(QThread):
                         temps = []
                         for sensor in hw.Sensors:
                             if str(sensor.SensorType) == 'Temperature':
-                                if sensor.Value is not None:
+                                if sensor.Value is not None and float(sensor.Value) > 0:
                                     temps.append(float(sensor.Value))
                         if temps:
                             return max(temps)
@@ -252,9 +258,11 @@ class SystemMonitor(QThread):
                 try:
                     if pynvml.nvmlDeviceGetCount() > 0:
                         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                        return float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
-                except Exception:
-                    pass
+                        temp = float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
+                        if temp > 0:
+                            return temp
+                except Exception as e:
+                    print(f"Ошибка получения температуры GPU через NVML: {e}", flush=True)
                     
             if not computer: return None
             try:
@@ -263,10 +271,10 @@ class SystemMonitor(QThread):
                         hw.Update()
                         for sensor in hw.Sensors:
                             if str(sensor.SensorType) == 'Temperature':
-                                if sensor.Value is not None:
+                                if sensor.Value is not None and float(sensor.Value) > 0:
                                     return float(sensor.Value)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Ошибка получения температуры GPU через LHM: {e}", flush=True)
             return None
 
         def get_cpu_power():

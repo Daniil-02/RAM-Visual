@@ -250,6 +250,13 @@ class SystemMonitor(QThread):
                     pass
             return gpus
 
+        def has_igpu():
+            for hw in get_lhm_gpus():
+                name = hw.Name.lower()
+                if 'intel' in name or 'amd radeon graphics' in name or 'vega' in name or 'integrated' in name:
+                    return True
+            return False
+
         def get_cpu_temp():
             if not computer: return None
             try:
@@ -412,10 +419,13 @@ class SystemMonitor(QThread):
                         
                         if gpu < 0:
                             gpu = 0.0
-                        if gpu_power is None or gpu_power < 0:
-                            gpu_power = 0.0
+                        if gpu_power is None or gpu_power <= 0:
+                            if has_igpu() and cpu_power is not None:
+                                gpu_power = cpu_power
+                            else:
+                                gpu_power = 0.0
                             
-                        is_gpu_sleep = (gpu_temp is None) and (gpu_power < 1.0)
+                        is_gpu_sleep = False # Desired sleep state handled implicitly if needed
                     except Exception:
                         gpu = 0.0
                         cpu_temp = gpu_temp = cpu_power = None

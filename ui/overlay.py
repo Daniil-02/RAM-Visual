@@ -2,6 +2,17 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, Q
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, pyqtProperty
 
+class HoverContainer(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.action = None
+        self.menu = None
+
+    def enterEvent(self, event):
+        if self.menu and self.action:
+            self.menu.setActiveAction(self.action)
+        super().enterEvent(event)
+
 class OverlayWindow(QWidget):
     request_exit = pyqtSignal()
     request_return = pyqtSignal()
@@ -275,7 +286,8 @@ class OverlayWindow(QWidget):
         pin_action.triggered.connect(self.toggle_pin)
 
         # Интегрированный ползунок прозрачности
-        opacity_widget = QWidget()
+        opacity_widget = HoverContainer()
+        opacity_widget.menu = menu
         opacity_layout = QHBoxLayout(opacity_widget)
         opacity_layout.setContentsMargins(14, 5, 14, 5)
         opacity_layout.setSpacing(10)
@@ -335,6 +347,7 @@ class OverlayWindow(QWidget):
         
         slider_action = QWidgetAction(self)
         slider_action.setDefaultWidget(opacity_widget)
+        opacity_widget.action = slider_action
 
         hotkey_action = QAction("Сменить хоткей...", self)
         hotkey_action.triggered.connect(self._on_hotkey_change)
@@ -343,7 +356,8 @@ class OverlayWindow(QWidget):
         exit_action.triggered.connect(self.request_exit.emit)
         
         # Кастомная кнопка для переключения единиц измерения сети
-        network_widget = QWidget()
+        network_widget = HoverContainer()
+        network_widget.menu = menu
         network_layout = QHBoxLayout(network_widget)
         network_layout.setContentsMargins(2, 2, 2, 2)
         
@@ -382,6 +396,7 @@ class OverlayWindow(QWidget):
         
         network_action = QWidgetAction(self)
         network_action.setDefaultWidget(network_widget)
+        network_widget.action = network_action
         
         menu.addAction(return_action)
         menu.addAction(pin_action)

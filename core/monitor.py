@@ -267,17 +267,7 @@ class SystemMonitor(QThread):
                 pass
             return None
 
-        def get_gpu_temp():
-            if self.nvml_inited:
-                try:
-                    if pynvml.nvmlDeviceGetCount() > 0:
-                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                        temp = float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
-                        if temp > 0:
-                            return temp
-                except Exception:
-                    pass
-                    
+        def get_gpu_temp(cpu_temp=None):
             for hw in get_lhm_gpus():
                 try:
                     hw.Update()
@@ -290,6 +280,20 @@ class SystemMonitor(QThread):
                         return max(temps)
                 except Exception:
                     continue
+
+            if self.nvml_inited:
+                try:
+                    if pynvml.nvmlDeviceGetCount() > 0:
+                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                        temp = float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
+                        if temp > 0:
+                            return temp
+                except Exception:
+                    pass
+                    
+            if cpu_temp is not None:
+                return cpu_temp
+                
             return None
 
         def get_cpu_power():
@@ -309,16 +313,6 @@ class SystemMonitor(QThread):
             return None
 
         def get_gpu_power():
-            if self.nvml_inited:
-                try:
-                    if pynvml.nvmlDeviceGetCount() > 0:
-                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                        mw = pynvml.nvmlDeviceGetPowerUsage(handle)
-                        if mw > 0:
-                            return mw / 1000.0
-                except Exception:
-                    pass
-                    
             for hw in get_lhm_gpus():
                 try:
                     hw.Update()
@@ -331,13 +325,21 @@ class SystemMonitor(QThread):
                         return max(powers)
                 except Exception:
                     continue
+
+            if self.nvml_inited:
+                try:
+                    if pynvml.nvmlDeviceGetCount() > 0:
+                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                        mw = pynvml.nvmlDeviceGetPowerUsage(handle)
+                        if mw > 0:
+                            return mw / 1000.0
+                except Exception:
+                    pass
+                    
             return None
 
         def get_gpu_load():
             load = self.get_gpu_usage_pdh()
-            if load > 0: return load
-            
-            load = self.get_gpu_usage_nvml()
             if load > 0: return load
             
             for hw in get_lhm_gpus():
@@ -351,6 +353,10 @@ class SystemMonitor(QThread):
                                     return float(sensor.Value)
                 except Exception:
                     continue
+            
+            load = self.get_gpu_usage_nvml()
+            if load > 0: return load
+            
             return -1.0
 
         loop_count = 0
@@ -400,7 +406,7 @@ class SystemMonitor(QThread):
                     try:
                         gpu = get_gpu_load()
                         cpu_temp = get_cpu_temp()
-                        gpu_temp = get_gpu_temp()
+                        gpu_temp = get_gpu_temp(cpu_temp)
                         cpu_power = get_cpu_power()
                         gpu_power = get_gpu_power()
                         

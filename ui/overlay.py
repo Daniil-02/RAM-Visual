@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog, QSlider, QWidgetAction
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog, QSlider, QWidgetAction, QPushButton
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, pyqtProperty
 
@@ -252,7 +252,7 @@ class OverlayWindow(QWidget):
         # Интегрированный ползунок прозрачности
         opacity_widget = QWidget()
         opacity_layout = QHBoxLayout(opacity_widget)
-        opacity_layout.setContentsMargins(12, 5, 12, 5)
+        opacity_layout.setContentsMargins(14, 5, 14, 5)
         opacity_layout.setSpacing(10)
         
         lbl_title = QLabel("Прозрачность:")
@@ -317,14 +317,49 @@ class OverlayWindow(QWidget):
         exit_action = QAction("Закрыть приложение", self)
         exit_action.triggered.connect(self.request_exit.emit)
         
-        mbps_action = QAction("Показывать в Мбит/с", self)
-        mbps_action.setCheckable(True)
-        mbps_action.setChecked(self.use_mbps)
-        mbps_action.triggered.connect(self.toggle_mbps)
+        # Кастомная кнопка для переключения единиц измерения сети
+        network_widget = QWidget()
+        network_layout = QHBoxLayout(network_widget)
+        network_layout.setContentsMargins(2, 2, 2, 2)
+        
+        btn_network = QPushButton()
+        btn_network.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_network.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #E0E0E0;
+                border: none;
+                text-align: left;
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 122, 255, 0.25);
+                color: #FFFFFF;
+            }
+        """)
+        
+        def update_network_btn_text():
+            if self.use_mbps:
+                btn_network.setText("Включить Мбайт/с")
+            else:
+                btn_network.setText("Включить Мбит/с")
+                
+        update_network_btn_text()
+        
+        def on_network_clicked():
+            self.toggle_mbps(not self.use_mbps)
+            update_network_btn_text()
+            
+        btn_network.clicked.connect(on_network_clicked)
+        network_layout.addWidget(btn_network)
+        
+        network_action = QWidgetAction(self)
+        network_action.setDefaultWidget(network_widget)
         
         menu.addAction(return_action)
         menu.addAction(pin_action)
-        menu.addAction(mbps_action)
+        menu.addAction(network_action)
         menu.addSeparator()
         menu.addAction(slider_action)
         menu.addAction(hotkey_action)

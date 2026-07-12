@@ -9,6 +9,7 @@ class OverlayWindow(QWidget):
     hotkey_change_requested = pyqtSignal(str)
     pin_toggled = pyqtSignal(bool)
     position_changed = pyqtSignal(int, int)
+    mbps_toggled = pyqtSignal(bool)
     
     def get_current_height(self):
         return self.height()
@@ -24,6 +25,7 @@ class OverlayWindow(QWidget):
         self.init_ui()
         self.drag_offset = None
         self.is_pinned = False
+        self.use_mbps = False
 
     def init_ui(self):
         self.setObjectName("OverlayWindow")
@@ -135,7 +137,12 @@ class OverlayWindow(QWidget):
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)
-            self.lbl_ping_val.setText(f"{metrics['ping']} (↓ {speed:.1f} MB/s)")
+            if self.use_mbps:
+                speed = speed * 8.0
+                unit = "Mbps"
+            else:
+                unit = "MB/s"
+            self.lbl_ping_val.setText(f"{metrics['ping']} (↓ {speed:.1f} {unit})")
 
     def toggle_ping_visibility(self, visible):
         if hasattr(self, '_ping_visible') and self._ping_visible == visible:
@@ -310,8 +317,14 @@ class OverlayWindow(QWidget):
         exit_action = QAction("Закрыть приложение", self)
         exit_action.triggered.connect(self.request_exit.emit)
         
+        mbps_action = QAction("Показывать в Мбит/с", self)
+        mbps_action.setCheckable(True)
+        mbps_action.setChecked(self.use_mbps)
+        mbps_action.triggered.connect(self.toggle_mbps)
+        
         menu.addAction(return_action)
         menu.addAction(pin_action)
+        menu.addAction(mbps_action)
         menu.addSeparator()
         menu.addAction(slider_action)
         menu.addAction(hotkey_action)
@@ -332,3 +345,7 @@ class OverlayWindow(QWidget):
     def toggle_pin(self):
         self.is_pinned = not self.is_pinned
         self.pin_toggled.emit(self.is_pinned)
+
+    def toggle_mbps(self, checked):
+        self.use_mbps = checked
+        self.mbps_toggled.emit(self.use_mbps)

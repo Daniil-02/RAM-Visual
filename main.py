@@ -60,9 +60,13 @@ class AppManager:
         self.overlay.hotkey_change_requested.connect(self.on_hotkey_change)
         self.overlay.pin_toggled.connect(self.on_pin_toggled)
         self.overlay.position_changed.connect(self.on_overlay_moved)
+        self.overlay.mbps_toggled.connect(self.on_mbps_toggled)
         
         # Применяем сохраненный флаг закрепления
         self.overlay.is_pinned = self.config.get("is_pinned", False)
+        
+        # Применяем настройку единиц измерения скорости сети
+        self.overlay.use_mbps = self.config.get("use_mbps", False)
         
         # Восстанавливаем позицию из конфига
         wx = self.config.get("window_x")
@@ -119,6 +123,11 @@ class AppManager:
     def on_pin_toggled(self, is_pinned):
         """Сохранение состояния закрепления в конфиг."""
         self.config["is_pinned"] = is_pinned
+        save_config(self.config)
+
+    def on_mbps_toggled(self, is_mbps):
+        """Сохранение единиц измерения скорости сети в конфиг."""
+        self.config["use_mbps"] = is_mbps
         save_config(self.config)
 
     def on_overlay_moved(self, x, y):

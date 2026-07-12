@@ -117,12 +117,27 @@ class OverlayWindow(QWidget):
 
     def update_metrics(self, metrics):
         self.lbl_ram_val.setText(f"{metrics['ram']:,.0f} MB".replace(",", " "))
+        ram_percent = metrics.get('ram_percent', 0.0)
+        if ram_percent >= 90:
+            self.lbl_ram_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+        else:
+            self.lbl_ram_val.setStyleSheet("")  # Восстановление к стандартному стилю из QSS
         
         cpu_temp = metrics.get('cpu_temp')
         cpu_power = metrics.get('cpu_power')
         cpu_temp_str = f"({cpu_temp:.0f}°C)" if cpu_temp is not None else "(N/A °C)"
         cpu_power_str = f" {cpu_power:.0f}W" if cpu_power is not None else ""
         self.lbl_cpu_val.setText(f"{metrics['cpu']:.1f} %  {cpu_temp_str}{cpu_power_str}")
+        
+        if cpu_temp is not None:
+            if cpu_temp >= 85:
+                self.lbl_cpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+            elif cpu_temp >= 80:
+                self.lbl_cpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+            else:
+                self.lbl_cpu_val.setStyleSheet("")
+        else:
+            self.lbl_cpu_val.setStyleSheet("")
         
         gpu_val = metrics['gpu']
         gpu_temp = metrics.get('gpu_temp')
@@ -134,6 +149,16 @@ class OverlayWindow(QWidget):
             self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}{gpu_power_str}")
         else:
             self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
+            
+        if gpu_temp is not None:
+            if gpu_temp >= 85:
+                self.lbl_gpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+            elif gpu_temp >= 80:
+                self.lbl_gpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+            else:
+                self.lbl_gpu_val.setStyleSheet("")
+        else:
+            self.lbl_gpu_val.setStyleSheet("")
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)
@@ -342,9 +367,9 @@ class OverlayWindow(QWidget):
         
         def update_network_btn_text():
             if self.use_mbps:
-                btn_network.setText("Включить Мбайт/с")
+                btn_network.setText("Переключить на Мбайт/с")
             else:
-                btn_network.setText("Включить Мбит/с")
+                btn_network.setText("Переключить на Мбит/с")
                 
         update_network_btn_text()
         

@@ -380,6 +380,7 @@ class SystemMonitor(QThread):
                     self.metrics_updated.emit({
                         'cpu': total_cpu,
                         'ram': total_ram_mb,
+                        'ram_percent': psutil.virtual_memory().percent,
                         'gpu': gpu,
                         'cpu_temp': cpu_temp,
                         'gpu_temp': gpu_temp,

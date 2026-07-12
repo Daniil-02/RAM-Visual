@@ -328,6 +328,7 @@ class OverlayWindow(QWidget):
             QPushButton {
                 background-color: transparent;
                 color: #E0E0E0;
+                font-weight: normal;
                 border: none;
                 text-align: left;
                 padding: 6px 24px 6px 12px;

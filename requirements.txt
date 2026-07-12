@@ -1,6 +1,6 @@
 PyQt6
 psutil
+pynvml
 keyboard
 pywin32
-nvidia-ml-py
 pythonnet

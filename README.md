@@ -1,4 +1,4 @@
-# RAM Visual Overlay - Compact System Monitor
+# RAM Visual Overlay - Compact System Monitor V1.0
 
 A clean, customizable, frameless desktop overlay for real-time hardware performance and network latency monitoring across any running application.
 

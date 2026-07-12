@@ -127,12 +127,18 @@ class OverlayWindow(QWidget):
         self.setFixedHeight(self.height())
 
     def update_metrics(self, metrics):
+        def update_label_style(label, color_style):
+            label.setStyleSheet(color_style)
+            label.style().unpolish(label)
+            label.style().polish(label)
+            label.update()
+
         self.lbl_ram_val.setText(f"{metrics['ram']:,.0f} MB".replace(",", " "))
         ram_percent = metrics.get('ram_percent', 0.0)
         if ram_percent >= 90:
-            self.lbl_ram_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+            update_label_style(self.lbl_ram_val, "color: #FF1744; font-weight: bold;")  # Critical Red
         else:
-            self.lbl_ram_val.setStyleSheet("")  # Восстановление к стандартному стилю из QSS
+            update_label_style(self.lbl_ram_val, "")  # Восстановление к стандартному стилю из QSS
         
         cpu_temp = metrics.get('cpu_temp')
         cpu_power = metrics.get('cpu_power')
@@ -142,13 +148,13 @@ class OverlayWindow(QWidget):
         
         if cpu_temp is not None:
             if cpu_temp >= 85:
-                self.lbl_cpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+                update_label_style(self.lbl_cpu_val, "color: #FF1744; font-weight: bold;")  # Critical Red
             elif cpu_temp >= 80:
-                self.lbl_cpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+                update_label_style(self.lbl_cpu_val, "color: #FFD600; font-weight: bold;")  # Warning Yellow
             else:
-                self.lbl_cpu_val.setStyleSheet("")
+                update_label_style(self.lbl_cpu_val, "")
         else:
-            self.lbl_cpu_val.setStyleSheet("")
+            update_label_style(self.lbl_cpu_val, "")
         
         gpu_val = metrics['gpu']
         gpu_temp = metrics.get('gpu_temp')
@@ -157,7 +163,7 @@ class OverlayWindow(QWidget):
         
         if gpu_sleep:
             self.lbl_gpu_val.setText("0.0 %  (Sleep)")
-            self.lbl_gpu_val.setStyleSheet("")
+            update_label_style(self.lbl_gpu_val, "")
         else:
             gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
             gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
@@ -169,13 +175,13 @@ class OverlayWindow(QWidget):
                 
             if gpu_temp is not None:
                 if gpu_temp >= 85:
-                    self.lbl_gpu_val.setStyleSheet("color: #FF1744; font-weight: bold;")  # Critical Red
+                    update_label_style(self.lbl_gpu_val, "color: #FF1744; font-weight: bold;")  # Critical Red
                 elif gpu_temp >= 80:
-                    self.lbl_gpu_val.setStyleSheet("color: #FFD600; font-weight: bold;")  # Warning Yellow
+                    update_label_style(self.lbl_gpu_val, "color: #FFD600; font-weight: bold;")  # Warning Yellow
                 else:
-                    self.lbl_gpu_val.setStyleSheet("")
+                    update_label_style(self.lbl_gpu_val, "")
             else:
-                self.lbl_gpu_val.setStyleSheet("")
+                update_label_style(self.lbl_gpu_val, "")
             
         if 'ping' in metrics and self._ping_visible:
             speed = metrics.get('download_speed', 0.0)

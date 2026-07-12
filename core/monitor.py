@@ -410,10 +410,16 @@ class SystemMonitor(QThread):
                         cpu_power = get_cpu_power()
                         gpu_power = get_gpu_power()
                         
-                        is_gpu_sleep = (gpu_temp is None) and (gpu_power is None or gpu_power < 1.0)
+                        if gpu < 0:
+                            gpu = 0.0
+                        if gpu_power is None or gpu_power < 0:
+                            gpu_power = 0.0
+                            
+                        is_gpu_sleep = (gpu_temp is None) and (gpu_power < 1.0)
                     except Exception:
-                        gpu = -1.0
-                        cpu_temp = gpu_temp = cpu_power = gpu_power = None
+                        gpu = 0.0
+                        cpu_temp = gpu_temp = cpu_power = None
+                        gpu_power = 0.0
                         is_gpu_sleep = False
                     
                     if self.ping_enabled:

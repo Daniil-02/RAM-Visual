@@ -235,11 +235,22 @@ class SystemMonitor(QThread):
         except Exception as e:
             print(f"Ошибка загрузки LibreHardwareMonitorLib: {e}", flush=True)
 
+        def get_lhm_gpus():
+            gpus = []
+            if computer:
+                try:
+                    for hw in computer.Hardware:
+                        if 'gpu' in str(hw.HardwareType).lower():
+                            gpus.append(hw)
+                except Exception:
+                    pass
+            return gpus
+
         def get_cpu_temp():
             if not computer: return None
             try:
                 for hw in computer.Hardware:
-                    if 'Cpu' in str(hw.HardwareType):
+                    if 'cpu' in str(hw.HardwareType).lower():
                         hw.Update()
                         temps = []
                         for sensor in hw.Sensors:
@@ -253,7 +264,6 @@ class SystemMonitor(QThread):
             return None
 
         def get_gpu_temp():
-            # Приоритет NVML, он быстрее
             if self.nvml_inited:
                 try:
                     if pynvml.nvmlDeviceGetCount() > 0:
@@ -261,82 +271,86 @@ class SystemMonitor(QThread):
                         temp = float(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
                         if temp > 0:
                             return temp
-                except Exception as e:
-                    print(f"Ошибка получения температуры GPU через NVML: {e}", flush=True)
+                except Exception:
+                    pass
                     
-            if not computer: return None
-            try:
-                for hw in computer.Hardware:
-                    if 'Gpu' in str(hw.HardwareType):
-                        hw.Update()
-                        for sensor in hw.Sensors:
-                            if str(sensor.SensorType) == 'Temperature':
-                                if sensor.Value is not None and float(sensor.Value) > 0:
-                                    return float(sensor.Value)
-            except Exception as e:
-                print(f"Ошибка получения температуры GPU через LHM: {e}", flush=True)
+            for hw in get_lhm_gpus():
+                try:
+                    hw.Update()
+                    temps = []
+                    for sensor in hw.Sensors:
+                        if str(sensor.SensorType) == 'Temperature':
+                            if sensor.Value is not None and float(sensor.Value) > 0:
+                                temps.append(float(sensor.Value))
+                    if temps:
+                        return max(temps)
+                except Exception:
+                    continue
             return None
 
         def get_cpu_power():
-            """Чтение мощности CPU пакета через LibreHardwareMonitor (Вт)."""
             if not computer: return None
             try:
                 for hw in computer.Hardware:
-                    if 'Cpu' in str(hw.HardwareType):
+                    if 'cpu' in str(hw.HardwareType).lower():
                         hw.Update()
                         for sensor in hw.Sensors:
-                            # Ищем Package Power — суммарная мощность всего CPU
                             if str(sensor.SensorType) == 'Power':
                                 name = str(sensor.Name).lower()
                                 if 'package' in name or 'cpu' in name:
-                                    if sensor.Value is not None:
+                                    if sensor.Value is not None and float(sensor.Value) > 0:
                                         return float(sensor.Value)
             except Exception:
                 pass
             return None
 
         def get_gpu_power():
-            """Чтение мощности GPU через NVML (NVIDIA). Для AMD — через LibreHardwareMonitor."""
-            # Приоритет: NVML для NVIDIA
             if self.nvml_inited:
                 try:
                     if pynvml.nvmlDeviceGetCount() > 0:
                         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                        mw = pynvml.nvmlDeviceGetPowerUsage(handle)  # milliwatts
-                        return mw / 1000.0
+                        mw = pynvml.nvmlDeviceGetPowerUsage(handle)
+                        if mw > 0:
+                            return mw / 1000.0
                 except Exception:
                     pass
-            # Fallback: LibreHardwareMonitor для AMD и других
-            if not computer: return None
-            try:
-                for hw in computer.Hardware:
-                    if 'Gpu' in str(hw.HardwareType):
-                        hw.Update()
-                        for sensor in hw.Sensors:
-                            if str(sensor.SensorType) == 'Power':
-                                if sensor.Value is not None:
-                                    return float(sensor.Value)
-            except Exception:
-                pass
+                    
+            for hw in get_lhm_gpus():
+                try:
+                    hw.Update()
+                    powers = []
+                    for sensor in hw.Sensors:
+                        if str(sensor.SensorType) == 'Power':
+                            if sensor.Value is not None and float(sensor.Value) > 0:
+                                powers.append(float(sensor.Value))
+                    if powers:
+                        return max(powers)
+                except Exception:
+                    continue
             return None
 
-        loop_count = 0
-        debug_dumped = False
+        def get_gpu_load():
+            load = self.get_gpu_usage_pdh()
+            if load > 0: return load
+            
+            load = self.get_gpu_usage_nvml()
+            if load > 0: return load
+            
+            for hw in get_lhm_gpus():
+                try:
+                    hw.Update()
+                    for sensor in hw.Sensors:
+                        if str(sensor.SensorType) == 'Load':
+                            name = str(sensor.Name).lower()
+                            if 'core' in name or 'gpu' in name:
+                                if sensor.Value is not None and float(sensor.Value) > 0:
+                                    return float(sensor.Value)
+                except Exception:
+                    continue
+            return -1.0
+
         try:
             while self.running and self.processes:
-                if not debug_dumped and computer:
-                    print("\n=== LHM SENSOR DUMP ===", flush=True)
-                    try:
-                        for hw in computer.Hardware:
-                            hw.Update()
-                            print(f"Hardware: {hw.Name} ({hw.HardwareType})", flush=True)
-                            for sensor in hw.Sensors:
-                                print(f"  Sensor: {sensor.Name} | Type: {sensor.SensorType} | Value: {sensor.Value}", flush=True)
-                    except Exception as e:
-                        print(f"Error during sensor dump: {e}", flush=True)
-                    print("=======================\n", flush=True)
-                    debug_dumped = True
-                    
                 # ГЛАВНАЯ ОПТИМИЗАЦИЯ: полный простой (0% CPU), пока оверлей скрыт
                 if self.paused:
                     time.sleep(0.5)
@@ -378,14 +392,15 @@ class SystemMonitor(QThread):
                     if self.cpu_count and self.cpu_count > 0:
                         total_cpu = total_cpu / self.cpu_count
                     
-                    gpu = self.get_gpu_usage_pdh()
-                    if gpu < 0:
-                        gpu = self.get_gpu_usage_nvml()
-                    
-                    cpu_temp = get_cpu_temp()
-                    gpu_temp = get_gpu_temp()
-                    cpu_power = get_cpu_power()
-                    gpu_power = get_gpu_power()
+                    try:
+                        gpu = get_gpu_load()
+                        cpu_temp = get_cpu_temp()
+                        gpu_temp = get_gpu_temp()
+                        cpu_power = get_cpu_power()
+                        gpu_power = get_gpu_power()
+                    except Exception:
+                        gpu = -1.0
+                        cpu_temp = gpu_temp = cpu_power = gpu_power = None
                     
                     if self.ping_enabled:
                         net_io = psutil.net_io_counters()

@@ -231,7 +231,11 @@ class SystemMonitor(QThread):
             computer.IsNetworkEnabled = True
             computer.IsStorageEnabled = True
             computer.IsBatteryEnabled = True
-            computer.Open()
+            try:
+                computer.Open()
+            except Exception as e:
+                print(f"Внимание: Не удалось инициализировать LHM (возможно, отсутствует HidSharp.dll). Fallback к базовым метрикам. Ошибка: {e}", flush=True)
+                computer = None
         except Exception as e:
             print(f"Ошибка загрузки LibreHardwareMonitorLib: {e}", flush=True)
 
@@ -349,6 +353,7 @@ class SystemMonitor(QThread):
                     continue
             return -1.0
 
+        loop_count = 0
         try:
             while self.running and self.processes:
                 # ГЛАВНАЯ ОПТИМИЗАЦИЯ: полный простой (0% CPU), пока оверлей скрыт

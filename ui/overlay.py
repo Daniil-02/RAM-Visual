@@ -30,9 +30,10 @@ class OverlayWindow(QWidget):
         
     current_height = pyqtProperty(int, fget=get_current_height, fset=set_current_height)
 
-    def __init__(self, process_name):
+    def __init__(self, process_name, config):
         super().__init__()
         self.process_name = process_name
+        self.config = config
         self.init_ui()
         self.drag_offset = None
         self.is_pinned = False
@@ -165,7 +166,9 @@ class OverlayWindow(QWidget):
         gpu_sleep = metrics.get('gpu_sleep', False)
         
         if gpu_sleep:
-            self.lbl_gpu_val.setText("0.0 %  (Sleep)")
+            lang = self.config.get("language", "ru")
+            sleep_str = "Спит" if lang == "ru" else "Sleep"
+            self.lbl_gpu_val.setText(f"0.0 %  ({sleep_str})")
             update_label_style(self.lbl_gpu_val, "color: #00E676; font-weight: bold;")
         else:
             gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"

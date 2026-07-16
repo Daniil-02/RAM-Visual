@@ -8,7 +8,8 @@ DEFAULT_CONFIG = {
     "is_pinned": False,
     "window_x": None,
     "window_y": None,
-    "use_mbps": False
+    "use_mbps": False,
+    "language": "ru"
 }
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")

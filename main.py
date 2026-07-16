@@ -24,7 +24,7 @@ class AppManager:
         self.hotkey_listener = None
         self.last_overlay_pos = None
         
-        self.main_window = MainWindow(self.on_process_selected)
+        self.main_window = MainWindow(self.on_process_selected, self.config)
         self.main_window.toggle_overlay_requested.connect(self.toggle_overlay)
         self.main_window.quit_requested.connect(self.force_quit)
         self.main_window.ping_toggled.connect(self.on_ping_toggled)
@@ -53,7 +53,7 @@ class AppManager:
         if self.overlay:
             self.overlay.close()
             
-        self.overlay = OverlayWindow(name)
+        self.overlay = OverlayWindow(name, self.config)
         self.overlay.request_exit.connect(self.force_quit)
         self.overlay.request_return.connect(self.return_to_main)
         self.overlay.opacity_changed.connect(self.on_opacity_changed)

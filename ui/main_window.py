@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
 from PyQt6.QtCore import Qt, QSize, QFileInfo, pyqtSignal, QVariantAnimation
 from PyQt6.QtGui import QIcon, QAction, QColor, QPalette, QCloseEvent
 from PyQt6.QtWidgets import QFileIconProvider
+from core.config import save_config
 
 def get_visible_windows_pids():
     """Получает множество PID процессов, имеющих видимые окна на рабочем столе."""
@@ -121,23 +122,40 @@ class ProcessItemWidget(QFrame):
         if hasattr(main_win, 'select_process'):
             main_win.select_process()
 
-
+TRANSLATIONS = {
+    "ru": {
+        "window_title": "RAM Visual - Выбор процесса",
+        "header": "Выберите приложение для мониторинга",
+        "search_placeholder": "Поиск процесса...",
+        "btn_refresh": "Обновить список",
+        "btn_monitor": "Мониторить",
+        "flag_btn": "🇷🇺 RU"
+    },
+    "en": {
+        "window_title": "RAM Visual - Process Selection",
+        "header": "Select an application to monitor",
+        "search_placeholder": "Search process...",
+        "btn_refresh": "Refresh List",
+        "btn_monitor": "Monitor",
+        "flag_btn": "🇬🇧 EN"
+    }
+}
 
 class MainWindow(QMainWindow):
     toggle_overlay_requested = pyqtSignal()
     quit_requested = pyqtSignal()
     ping_toggled = pyqtSignal(bool)
     
-    def __init__(self, on_process_selected):
+    def __init__(self, on_process_selected, config):
         super().__init__()
         self.on_process_selected = on_process_selected
+        self.config = config
         self.init_ui()
         self.init_tray()
         self.load_processes()
         
     def init_ui(self):
         self.setObjectName("MainWindow")
-        self.setWindowTitle("RAM Visual - Выбор процесса")
         self.resize(450, 600)
         
         central_widget = QWidget()
@@ -147,12 +165,40 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
-        lbl_header = QLabel("Выберите приложение для мониторинга")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold;")
-        layout.addWidget(lbl_header)
+        top_layout = QHBoxLayout()
+        self.lbl_header = QLabel()
+        self.lbl_header.setStyleSheet("font-size: 18px; font-weight: bold;")
+        
+        self.btn_lang = QPushButton()
+        self.btn_lang.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_lang.setFixedWidth(80)
+        self.btn_lang.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.05);
+                color: #E0E0E0;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                padding: 5px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-color: #2962FF;
+                color: #FFFFFF;
+            }
+            QPushButton:pressed {
+                background-color: rgba(255, 255, 255, 0.15);
+            }
+        """)
+        self.btn_lang.clicked.connect(self.toggle_language)
+        
+        top_layout.addWidget(self.lbl_header)
+        top_layout.addStretch()
+        top_layout.addWidget(self.btn_lang)
+        layout.addLayout(top_layout)
         
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("Поиск процесса...")
         self.search_box.textChanged.connect(self.filter_processes)
         layout.addWidget(self.search_box)
         
@@ -161,15 +207,35 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.list_widget)
         
         btn_layout = QHBoxLayout()
-        self.btn_refresh = AnimatedButton("Обновить список")
+        self.btn_refresh = AnimatedButton("")
         self.btn_refresh.clicked.connect(self.load_processes)
         
-        self.btn_select = AnimatedButton("Мониторить")
+        self.btn_select = AnimatedButton("")
         self.btn_select.clicked.connect(self.select_process)
         
         btn_layout.addWidget(self.btn_refresh)
         btn_layout.addWidget(self.btn_select)
         layout.addLayout(btn_layout)
+        
+        self.retranslate_ui()
+
+    def toggle_language(self):
+        current_lang = self.config.get("language", "ru")
+        new_lang = "en" if current_lang == "ru" else "ru"
+        self.config["language"] = new_lang
+        save_config(self.config)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        lang = self.config.get("language", "ru")
+        translations = TRANSLATIONS.get(lang, TRANSLATIONS["ru"])
+        
+        self.setWindowTitle(translations["window_title"])
+        self.lbl_header.setText(translations["header"])
+        self.search_box.setPlaceholderText(translations["search_placeholder"])
+        self.btn_refresh.setText(translations["btn_refresh"])
+        self.btn_select.setText(translations["btn_monitor"])
+        self.btn_lang.setText(translations["flag_btn"])
 
     def init_tray(self):
         self.tray_icon = QSystemTrayIcon(self)

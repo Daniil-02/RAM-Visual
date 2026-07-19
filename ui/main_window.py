@@ -198,8 +198,39 @@ class MainWindow(QMainWindow):
                 background-color: rgba(255, 255, 255, 0.03);
                 color: #D0D0D0;
             }
+            QPushButton#LangBtn::menu-indicator {
+                image: none;
+            }
         """)
-        self.btn_lang.clicked.connect(self.toggle_language)
+        
+        lang_menu = QMenu(self)
+        lang_menu.setStyleSheet("""
+            QMenu {
+                background-color: #2b2b2b;
+                color: #cccccc;
+                border: 1px solid #444;
+                border-radius: 6px;
+                padding: 4px 0px;
+                font-family: "Segoe UI", sans-serif;
+                font-size: 13px;
+            }
+            QMenu::item {
+                padding: 6px 24px 6px 12px;
+            }
+            QMenu::item:selected {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #ffffff;
+            }
+        """)
+        
+        action_ru = QAction("Русский", self)
+        action_ru.triggered.connect(lambda: self.set_language("ru"))
+        action_en = QAction("English", self)
+        action_en.triggered.connect(lambda: self.set_language("en"))
+        
+        lang_menu.addAction(action_ru)
+        lang_menu.addAction(action_en)
+        self.btn_lang.setMenu(lang_menu)
         
         top_layout.addWidget(self.lbl_header)
         top_layout.addStretch()
@@ -227,12 +258,11 @@ class MainWindow(QMainWindow):
         
         self.retranslate_ui()
 
-    def toggle_language(self):
-        current_lang = self.config.get("language", "ru")
-        new_lang = "en" if current_lang == "ru" else "ru"
-        self.config["language"] = new_lang
-        save_config(self.config)
-        self.retranslate_ui()
+    def set_language(self, lang_code):
+        if self.config.get("language") != lang_code:
+            self.config["language"] = lang_code
+            save_config(self.config)
+            self.retranslate_ui()
 
     def retranslate_ui(self):
         lang = self.config.get("language", "ru")

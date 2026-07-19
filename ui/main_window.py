@@ -129,7 +129,7 @@ TRANSLATIONS = {
         "search_placeholder": "Поиск процесса...",
         "btn_refresh": "Обновить список",
         "btn_monitor": "Мониторить",
-        "flag_btn": "🇷🇺 RU",
+        "flag_btn": "🌐 RU",
         "tray_toggle": "Показать/Скрыть оверлей",
         "tray_ping": "Показывать Ping",
         "tray_quit": "Выход"
@@ -140,7 +140,7 @@ TRANSLATIONS = {
         "search_placeholder": "Search process...",
         "btn_refresh": "Refresh List",
         "btn_monitor": "Monitor",
-        "flag_btn": "🇬🇧 EN",
+        "flag_btn": "🌐 EN",
         "tray_toggle": "Show/Hide Overlay",
         "tray_ping": "Show Ping",
         "tray_quit": "Exit"
@@ -181,17 +181,21 @@ class MainWindow(QMainWindow):
         self.btn_lang.setFixedWidth(80)
         self.btn_lang.setStyleSheet("""
             QPushButton#LangBtn {
-                background-color: transparent;
-                border: 1px solid #444;
-                border-radius: 4px;
-                color: #FFF;
+                background-color: #2b2b2b;
+                border: none;
+                border-radius: 6px;
+                color: #cccccc;
                 font-family: "Segoe UI Emoji", "Segoe UI", sans-serif;
-                font-size: 14px;
-                padding: 4px 12px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 6px 14px;
             }
             QPushButton#LangBtn:hover {
-                background-color: #333;
-                border: 1px solid #666;
+                background-color: #3d3d3d;
+                color: #ffffff;
+            }
+            QPushButton#LangBtn:pressed {
+                background-color: #555555;
             }
         """)
         self.btn_lang.clicked.connect(self.toggle_language)

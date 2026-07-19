@@ -129,7 +129,10 @@ TRANSLATIONS = {
         "search_placeholder": "Поиск процесса...",
         "btn_refresh": "Обновить список",
         "btn_monitor": "Мониторить",
-        "flag_btn": "🇷🇺 RU"
+        "flag_btn": "🇷🇺 RU",
+        "tray_toggle": "Показать/Скрыть оверлей",
+        "tray_ping": "Показывать Ping",
+        "tray_quit": "Выход"
     },
     "en": {
         "window_title": "RAM Visual - Process Selection",
@@ -137,7 +140,10 @@ TRANSLATIONS = {
         "search_placeholder": "Search process...",
         "btn_refresh": "Refresh List",
         "btn_monitor": "Monitor",
-        "flag_btn": "🇬🇧 EN"
+        "flag_btn": "🇬🇧 EN",
+        "tray_toggle": "Show/Hide Overlay",
+        "tray_ping": "Show Ping",
+        "tray_quit": "Exit"
     }
 }
 
@@ -170,25 +176,22 @@ class MainWindow(QMainWindow):
         self.lbl_header.setStyleSheet("font-size: 18px; font-weight: bold;")
         
         self.btn_lang = QPushButton()
+        self.btn_lang.setObjectName("LangBtn")
         self.btn_lang.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_lang.setFixedWidth(80)
         self.btn_lang.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(255, 255, 255, 0.05);
-                color: #E0E0E0;
-                border: 1px solid #333333;
+            QPushButton#LangBtn {
+                background-color: transparent;
+                border: 1px solid #444;
                 border-radius: 4px;
-                padding: 5px;
-                font-size: 13px;
-                font-weight: bold;
+                color: #FFF;
+                font-family: "Segoe UI Emoji", "Segoe UI", sans-serif;
+                font-size: 14px;
+                padding: 4px 12px;
             }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-                border-color: #2962FF;
-                color: #FFFFFF;
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 0.15);
+            QPushButton#LangBtn:hover {
+                background-color: #333;
+                border: 1px solid #666;
             }
         """)
         self.btn_lang.clicked.connect(self.toggle_language)
@@ -236,6 +239,11 @@ class MainWindow(QMainWindow):
         self.btn_refresh.setText(translations["btn_refresh"])
         self.btn_select.setText(translations["btn_monitor"])
         self.btn_lang.setText(translations["flag_btn"])
+        
+        if hasattr(self, 'tray_toggle_action'):
+            self.tray_toggle_action.setText(translations["tray_toggle"])
+            self.ping_action.setText(translations["tray_ping"])
+            self.tray_quit_action.setText(translations["tray_quit"])
 
     def init_tray(self):
         self.tray_icon = QSystemTrayIcon(self)
@@ -247,21 +255,21 @@ class MainWindow(QMainWindow):
         
         tray_menu = QMenu()
         
-        toggle_action = QAction("Показать/Скрыть оверлей", self)
-        toggle_action.triggered.connect(self.toggle_overlay_requested.emit)
+        self.tray_toggle_action = QAction("Показать/Скрыть оверлей", self)
+        self.tray_toggle_action.triggered.connect(self.toggle_overlay_requested.emit)
         
         self.ping_action = QAction("Показывать Ping", self)
         self.ping_action.setCheckable(True)
         self.ping_action.setChecked(True)
         self.ping_action.triggered.connect(self.ping_toggled.emit)
 
-        quit_action = QAction("Выход", self)
-        quit_action.triggered.connect(self.quit_requested.emit)
+        self.tray_quit_action = QAction("Выход", self)
+        self.tray_quit_action.triggered.connect(self.quit_requested.emit)
         
-        tray_menu.addAction(toggle_action)
+        tray_menu.addAction(self.tray_toggle_action)
         tray_menu.addAction(self.ping_action)
         tray_menu.addSeparator()
-        tray_menu.addAction(quit_action)
+        tray_menu.addAction(self.tray_quit_action)
         
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()

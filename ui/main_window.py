@@ -181,21 +181,23 @@ class MainWindow(QMainWindow):
         self.btn_lang.setFixedWidth(80)
         self.btn_lang.setStyleSheet("""
             QPushButton#LangBtn {
-                background-color: #2b2b2b;
-                border: none;
-                border-radius: 6px;
-                color: #cccccc;
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 4px;
+                color: #888888;
                 font-family: "Segoe UI Emoji", "Segoe UI", sans-serif;
                 font-size: 13px;
-                font-weight: bold;
-                padding: 6px 14px;
+                font-weight: 600;
+                padding: 4px 8px;
             }
             QPushButton#LangBtn:hover {
-                background-color: #3d3d3d;
+                background-color: rgba(255, 255, 255, 0.07);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 color: #ffffff;
             }
             QPushButton#LangBtn:pressed {
-                background-color: #555555;
+                background-color: rgba(255, 255, 255, 0.12);
+                color: #4D88FF;
             }
         """)
         self.btn_lang.clicked.connect(self.toggle_language)

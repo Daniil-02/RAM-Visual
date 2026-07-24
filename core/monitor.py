@@ -9,7 +9,7 @@ import os
 import threading
 import re
 
-# Структура разделяемой памяти утилиты CoreTemp для чтения показаний без сторонних библиотек
+# Shared memory structure of the CoreTemp utility to read metrics without external libraries
 class CoreTempSharedDataEx(ctypes.Structure):
     _fields_ = [
         ("uiLoad", ctypes.c_uint * 256),
@@ -57,12 +57,12 @@ class SystemMonitor(QThread):
         self.processes = {} # {pid: psutil.Process()}
         self._update_process_list()
         
-        # Настройка PDH для получения загрузки GPU (Windows Performance Counters)
+        # Setup PDH to retrieve GPU load (Windows Performance Counters)
         self.hq = None
         self.gpu_counters = []
         self._setup_gpu_counters()
         
-        # Настройка NVML (NVIDIA) в качестве запасного варианта
+        # Setup NVML (NVIDIA) as a fallback
         self.nvml_inited = False
         try:
             pynvml.nvmlInit()
@@ -82,7 +82,7 @@ class SystemMonitor(QThread):
     def set_ping_enabled(self, enabled):
         self.ping_enabled = enabled
         if enabled:
-            # Сбрасываем счетчики при включении, чтобы не было скачка скорости
+            # Reset counters when enabled to avoid speed spikes
             self.last_net_bytes = psutil.net_io_counters().bytes_recv
             self.last_net_time = time.time()
 
@@ -129,18 +129,18 @@ class SystemMonitor(QThread):
         changed = False
         for p in psutil.process_iter(['pid', 'name', 'exe']):
             try:
-                # Группируем все дочерние процессы (например вкладки Chrome) по имени или пути
+                # Group all child processes (e.g. Chrome tabs) by name or path
                 if p.info['name'] == self.target_name or p.info['exe'] == self.target_exe:
                     pid = p.info['pid']
                     current_pids.add(pid)
                     if pid not in self.processes:
-                        p.cpu_percent(interval=None) # Инициализируем счетчик CPU
+                        p.cpu_percent(interval=None) # Initialize CPU counter
                         self.processes[pid] = p
                         changed = True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
                 
-        # Удаление завершенных процессов из отслеживания
+        # Remove terminated processes from tracking
         dead_pids = set(self.processes.keys()) - current_pids
         for pid in dead_pids:
             del self.processes[pid]
@@ -214,7 +214,7 @@ class SystemMonitor(QThread):
             import clr
             import sys
             import os
-            # Добавляем корень проекта в пути поиска DLL
+            # Add project root to DLL search paths
             project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             if project_dir not in sys.path:
                 sys.path.append(project_dir)
@@ -234,10 +234,10 @@ class SystemMonitor(QThread):
             try:
                 computer.Open()
             except Exception as e:
-                print(f"Внимание: Не удалось инициализировать LHM (возможно, отсутствует HidSharp.dll). Fallback к базовым метрикам. Ошибка: {e}", flush=True)
+                print(f"Warning: Failed to initialize LHM (possibly missing HidSharp.dll). Fallback to basic metrics. Error: {e}", flush=True)
                 computer = None
         except Exception as e:
-            print(f"Ошибка загрузки LibreHardwareMonitorLib: {e}", flush=True)
+            print(f"Error loading LibreHardwareMonitorLib: {e}", flush=True)
 
         def get_lhm_gpus():
             gpus = []
@@ -369,13 +369,13 @@ class SystemMonitor(QThread):
         loop_count = 0
         try:
             while self.running and self.processes:
-                # ГЛАВНАЯ ОПТИМИЗАЦИЯ: полный простой (0% CPU), пока оверлей скрыт
+                # MAIN OPTIMIZATION: complete idle (0% CPU) while the overlay is hidden
                 if self.paused:
                     time.sleep(0.5)
                     continue
                     
                 try:
-                    # Обновляем список процессов каждые 3 секунды, чтобы ловить новые окна/вкладки приложения
+                    # Update process list every 3 seconds to catch new windows/tabs of the application
                     if loop_count % 3 == 0:
                         if self._update_process_list():
                             self._setup_gpu_counters()
@@ -384,14 +384,14 @@ class SystemMonitor(QThread):
                     total_cpu = 0.0
                     total_ram_mb = 0.0
                     
-                    # Суммируем метрики по всем найденным экземплярам процесса
+                    # Sum metrics across all found process instances
                     for pid, proc in list(self.processes.items()):
                         try:
                             total_cpu += proc.cpu_percent(interval=None)
                             
-                            # psutil.memory_info().private в Windows возвращает Private Bytes (Commit Size),
-                            # что вызывает огромные значения для Java (6000 MB).
-                            # Истинный "Private Working Set" (как в Task Manager) — это USS (Unique Set Size).
+                            # psutil.memory_info().private on Windows returns Private Bytes (Commit Size),
+                            # which causes huge values for Java (6000 MB).
+                            # The true "Private Working Set" (like in Task Manager) is USS (Unique Set Size).
                             try:
                                 ram = proc.memory_full_info().uss
                             except (psutil.AccessDenied, AttributeError):
@@ -406,7 +406,7 @@ class SystemMonitor(QThread):
                             self.process_terminated.emit()
                         break
                             
-                    # Нормализуем значение CPU по количеству логических ядер (как в Task Manager)
+                    # Normalize CPU value by the number of logical cores (like in Task Manager)
                     if self.cpu_count and self.cpu_count > 0:
                         total_cpu = total_cpu / self.cpu_count
                     
@@ -459,13 +459,13 @@ class SystemMonitor(QThread):
                         'download_speed': self.current_download_speed
                     })
                     
-                    self.msleep(1000) # Обновление раз в секунду (Qt-нативный безопасный сон)
+                    self.msleep(1000) # Update once per second (Qt-native safe sleep)
                     
                 except Exception as e:
-                    print(f"Ошибка в цикле мониторинга: {e}", flush=True)
+                    print(f"Error in monitoring loop: {e}", flush=True)
                     self.msleep(1000)
         finally:
-            # Гарантированное закрытие аппаратной сессии при выходе из потока
+            # Guaranteed closing of hardware session on thread exit
             if computer:
                 try:
                     computer.Close()

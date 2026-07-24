@@ -10,10 +10,25 @@ from core.monitor import SystemMonitor
 from core.hotkeys import HotkeyListener
 from core.config import load_config, save_config
 
+TRANSLATIONS = {
+    "uk": {
+        "proc_terminated_title": "Процес завершено",
+        "proc_terminated_msg": "Програма, що відстежується, була закрита. Повернення до вибору процесів.",
+        "hotkey_changed": "Гарячу клавішу змінено на: ",
+        "hotkey_error": "Помилка: не вдалося встановити гарячу клавішу "
+    },
+    "en": {
+        "proc_terminated_title": "Process Terminated",
+        "proc_terminated_msg": "The monitored application was closed. Returning to process selection.",
+        "hotkey_changed": "Hotkey changed to: ",
+        "hotkey_error": "Error: failed to set hotkey "
+    }
+}
+
 class AppManager:
     def __init__(self):
         self.app = QApplication(sys.argv)
-        # Предотвращаем закрытие приложения при скрытии главного окна
+        # Prevent application from quitting when the main window is hidden
         self.app.setQuitOnLastWindowClosed(False) 
         
         self.load_styles()
@@ -29,7 +44,7 @@ class AppManager:
         self.main_window.quit_requested.connect(self.force_quit)
         self.main_window.ping_toggled.connect(self.on_ping_toggled)
         
-        # Восстанавливаем настройки из конфига
+        # Restore settings from config
         self.main_window.set_ping_from_config(self.config["ping_enabled"])
         
         self.main_window.show()
@@ -41,15 +56,15 @@ class AppManager:
                 self.app.setStyleSheet(f.read())
                 
     def on_process_selected(self, pid, name):
-        # Останавливаем предыдущий мониторинг, если был
+        # Stop previous monitoring if any
         if self.monitor:
             self.monitor.stop()
             
-        # Останавливаем предыдущие хоткеи
+        # Stop previous hotkeys
         if self.hotkey_listener:
             self.hotkey_listener.stop()
             
-        # Обновляем оверлей
+        # Update overlay
         if self.overlay:
             self.overlay.close()
             
@@ -62,33 +77,33 @@ class AppManager:
         self.overlay.position_changed.connect(self.on_overlay_moved)
         self.overlay.mbps_toggled.connect(self.on_mbps_toggled)
         
-        # Применяем сохраненный флаг закрепления
+        # Apply saved pin flag
         self.overlay.is_pinned = self.config.get("is_pinned", False)
         
-        # Применяем настройку единиц измерения скорости сети
+        # Apply network speed unit setting
         self.overlay.use_mbps = self.config.get("use_mbps", False)
         
-        # Восстанавливаем позицию из конфига
+        # Restore position from config
         wx = self.config.get("window_x")
         wy = self.config.get("window_y")
         if wx is not None and wy is not None:
             self.overlay.move(wx, wy)
         elif self.last_overlay_pos is not None:
             self.overlay.move(self.last_overlay_pos)
-
-        # Применяем прозрачность из конфига
+ 
+        # Apply opacity from config
         self.overlay.setWindowOpacity(self.config["opacity"])
         self.overlay.show()
         self.overlay.toggle_ping_visibility(self.main_window.is_ping_enabled())
         
-        # Запускаем сборщик метрик
+        # Start metric collector
         self.monitor = SystemMonitor(pid)
         self.monitor.set_ping_enabled(self.main_window.is_ping_enabled())
         self.monitor.metrics_updated.connect(self.overlay.update_metrics)
         self.monitor.process_terminated.connect(self.on_process_terminated)
         self.monitor.start()
         
-        # Запускаем перехват горячих клавиш (используем хоткей из конфига)
+        # Start hotkey interception (use hotkey from config)
         self.hotkey_listener = HotkeyListener(self.config["hotkey"])
         self.hotkey_listener.toggle_overlay.connect(self.toggle_overlay)
         self.hotkey_listener.start()
@@ -109,70 +124,74 @@ class AppManager:
             self.overlay.toggle_ping_visibility(is_enabled)
         if self.monitor:
             self.monitor.set_ping_enabled(is_enabled)
-        # Сохраняем в конфиг
+        # Save to config
         self.config["ping_enabled"] = is_enabled
         save_config(self.config)
 
     def on_opacity_changed(self, opacity):
-        """Изменение прозрачности оверлея и сохранение в конфиг."""
+        """Change overlay opacity and save to config."""
         if self.overlay:
             self.overlay.setWindowOpacity(opacity)
         self.config["opacity"] = opacity
         save_config(self.config)
-
+ 
     def on_pin_toggled(self, is_pinned):
-        """Сохранение состояния закрепления в конфиг."""
+        """Save pin state to config."""
         self.config["is_pinned"] = is_pinned
         save_config(self.config)
-
+ 
     def on_mbps_toggled(self, is_mbps):
-        """Сохранение единиц измерения скорости сети в конфиг."""
+        """Save network speed unit settings to config."""
         self.config["use_mbps"] = is_mbps
         save_config(self.config)
-
+ 
     def on_overlay_moved(self, x, y):
-        """Сохранение новых координат окна в конфиг."""
+        """Save new window coordinates to config."""
         self.config["window_x"] = x
         self.config["window_y"] = y
         save_config(self.config)
 
     def on_process_terminated(self):
-        """Обработка неожиданного завершения отслеживаемого процесса."""
+        """Handle unexpected termination of the monitored process."""
         from PyQt6.QtWidgets import QMessageBox
         
         if self.monitor:
             self.monitor.stop()
             
+        lang = self.config.get("language", "uk")
+        t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
         QMessageBox.information(
             None,
-            "Процесс завершен",
-            "Отслеживаемое приложение было закрыто. Возврат к выбору процессов."
+            t["proc_terminated_title"],
+            t["proc_terminated_msg"]
         )
         self.return_to_main()
 
     def on_hotkey_change(self, new_hotkey):
-        """Переназначение хоткея на лету и сохранение в конфиг."""
+        """Rebind hotkey on the fly and save to config."""
         if self.hotkey_listener:
             success = self.hotkey_listener.rebind(new_hotkey)
+            lang = self.config.get("language", "uk")
+            t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
             if success:
                 self.config["hotkey"] = new_hotkey
                 save_config(self.config)
                 self.main_window.tray_icon.showMessage(
                     "RAM Visual",
-                    f"Хоткей изменен на: {new_hotkey}",
+                    f"{t['hotkey_changed']}{new_hotkey}",
                     self.main_window.tray_icon.MessageIcon.Information,
                     2000
                 )
             else:
                 self.main_window.tray_icon.showMessage(
                     "RAM Visual",
-                    f"Ошибка: не удалось установить хоткей '{new_hotkey}'",
+                    f"{t['hotkey_error']}'{new_hotkey}'",
                     self.main_window.tray_icon.MessageIcon.Warning,
                     3000
                 )
 
     def return_to_main(self):
-        # Останавливаем мониторинг и хоткеи, закрываем оверлей
+        # Stop monitoring and hotkeys, close overlay
         if self.monitor:
             self.monitor.stop()
             self.monitor = None
@@ -181,7 +200,7 @@ class AppManager:
             self.hotkey_listener.wait()
             self.hotkey_listener = None
         if self.overlay:
-            # Сохраняем текущие координаты оверлея перед его закрытием
+            # Save current overlay coordinates before closing it
             pos = self.overlay.pos()
             self.last_overlay_pos = pos
             self.config["window_x"] = pos.x()
@@ -191,14 +210,14 @@ class AppManager:
             self.overlay.close()
             self.overlay = None
             
-        # Обновляем список и возвращаем главное окно
+        # Update list and return the main window
         self.main_window.load_processes()
         self.main_window.show()
 
     def force_quit(self):
         if self.monitor:
             self.monitor.stop()
-            self.monitor.wait() # Строго дожидаемся завершения потока
+            self.monitor.wait() # Strictly wait for the thread to terminate
         if self.hotkey_listener:
             self.hotkey_listener.stop()
             self.hotkey_listener.wait()
@@ -212,7 +231,7 @@ class AppManager:
 def ensure_hardware_monitor_dll():
     dll_path = os.path.join(os.path.dirname(__file__), 'LibreHardwareMonitorLib.dll')
     if not os.path.exists(dll_path):
-        print("Скачивание LibreHardwareMonitorLib.dll...")
+        print("Downloading LibreHardwareMonitorLib.dll...")
         try:
             url = 'https://www.nuget.org/api/v2/package/LibreHardwareMonitorLib/0.9.3'
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -221,9 +240,9 @@ def ensure_hardware_monitor_dll():
             dll_zip_path = [n for n in z.namelist() if n.endswith('LibreHardwareMonitorLib.dll')][0]
             with open(dll_path, 'wb') as f:
                 f.write(z.read(dll_zip_path))
-            print("Библиотека успешно скачана!")
+            print("Library downloaded successfully!")
         except Exception as e:
-            print(f"Ошибка при скачивании библиотеки: {e}")
+            print(f"Error downloading library: {e}")
 
 if __name__ == "__main__":
     manager = AppManager()

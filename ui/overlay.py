@@ -13,6 +13,43 @@ class HoverContainer(QWidget):
             self.menu.setActiveAction(self.action)
         super().enterEvent(event)
 
+TRANSLATIONS = {
+    "uk": {
+        "menu_return": "Повернутися",
+        "menu_pin": "Закріпити",
+        "menu_unpin": "Відкріпити",
+        "menu_opacity": "Прозорість:",
+        "menu_hotkey": "Змінити гарячу клавішу...",
+        "menu_exit": "Закрити програму",
+        "menu_network_mbps": "Перемкнути на Мбіт/с",
+        "menu_network_mb": "Перемкнути на Мбайт/с",
+        "dialog_hotkey_title": "Змінити гарячу клавішу",
+        "dialog_hotkey_text": "Введіть нову комбінацію клавіш\n(наприклад: alt+f10, ctrl+shift+o):",
+        "sleep": "Спить",
+        "ram": "RAM",
+        "cpu": "CPU",
+        "gpu": "GPU",
+        "ping": "PING"
+    },
+    "en": {
+        "menu_return": "Return",
+        "menu_pin": "Pin",
+        "menu_unpin": "Unpin",
+        "menu_opacity": "Opacity:",
+        "menu_hotkey": "Change Hotkey...",
+        "menu_exit": "Exit Application",
+        "menu_network_mbps": "Switch to Mbps",
+        "menu_network_mb": "Switch to MB/s",
+        "dialog_hotkey_title": "Change Hotkey",
+        "dialog_hotkey_text": "Enter new key combination\n(e.g.: alt+f10, ctrl+shift+o):",
+        "sleep": "Sleep",
+        "ram": "RAM",
+        "cpu": "CPU",
+        "gpu": "GPU",
+        "ping": "PING"
+    }
+}
+
 class OverlayWindow(QWidget):
     request_exit = pyqtSignal()
     request_return = pyqtSignal()
@@ -30,9 +67,10 @@ class OverlayWindow(QWidget):
         
     current_height = pyqtProperty(int, fget=get_current_height, fset=set_current_height)
 
-    def __init__(self, process_name):
+    def __init__(self, process_name, config):
         super().__init__()
         self.process_name = process_name
+        self.config = config
         self.init_ui()
         self.drag_offset = None
         self.is_pinned = False
@@ -40,27 +78,30 @@ class OverlayWindow(QWidget):
 
     def init_ui(self):
         self.setObjectName("OverlayWindow")
-        # Без рамок, поверх всех окон
+        # Frameless window, stays on top of all windows
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Tool
         )
-        # Прозрачный фон основного окна
+        # Transparent background of the main window
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Контейнер для стилизации (закругленные углы и темный полупрозрачный фон)
+        # Container for styling (rounded corners and dark semi-transparent background)
         self.container = QFrame(self)
         self.container.setObjectName("OverlayWidget")
         
         layout = QVBoxLayout(self.container)
         layout.setContentsMargins(15, 15, 15, 15)
         
-        # Название процесса
-        self.lbl_name = QLabel(self.process_name)
+        # Process name
+        display_name = self.process_name
+        if display_name.lower().endswith('.exe'):
+            display_name = display_name[:-4]
+        self.lbl_name = QLabel(display_name)
         self.lbl_name.setObjectName("ProcessNameLabel")
         layout.addWidget(self.lbl_name)
         
@@ -69,11 +110,11 @@ class OverlayWindow(QWidget):
         # RAM
         self.lbl_ram_val = QLabel("0 MB")
         self.lbl_ram_val.setProperty("class", "MetricValue")
-        lbl_ram_title = QLabel("RAM")
-        lbl_ram_title.setProperty("class", "MetricLabel")
+        self.lbl_ram_title = QLabel("RAM")
+        self.lbl_ram_title.setProperty("class", "MetricLabel")
         
         row_ram = QHBoxLayout()
-        row_ram.addWidget(lbl_ram_title)
+        row_ram.addWidget(self.lbl_ram_title)
         row_ram.addStretch()
         row_ram.addWidget(self.lbl_ram_val)
         metrics_layout.addLayout(row_ram)
@@ -81,11 +122,11 @@ class OverlayWindow(QWidget):
         # CPU
         self.lbl_cpu_val = QLabel("0.0 %")
         self.lbl_cpu_val.setProperty("class", "MetricValue")
-        lbl_cpu_title = QLabel("CPU")
-        lbl_cpu_title.setProperty("class", "MetricLabel")
+        self.lbl_cpu_title = QLabel("CPU")
+        self.lbl_cpu_title.setProperty("class", "MetricLabel")
         
         row_cpu = QHBoxLayout()
-        row_cpu.addWidget(lbl_cpu_title)
+        row_cpu.addWidget(self.lbl_cpu_title)
         row_cpu.addStretch()
         row_cpu.addWidget(self.lbl_cpu_val)
         metrics_layout.addLayout(row_cpu)
@@ -93,11 +134,11 @@ class OverlayWindow(QWidget):
         # GPU
         self.lbl_gpu_val = QLabel("0.0 %")
         self.lbl_gpu_val.setProperty("class", "MetricValue")
-        lbl_gpu_title = QLabel("GPU")
-        lbl_gpu_title.setProperty("class", "MetricLabel")
+        self.lbl_gpu_title = QLabel("GPU")
+        self.lbl_gpu_title.setProperty("class", "MetricLabel")
         
         row_gpu = QHBoxLayout()
-        row_gpu.addWidget(lbl_gpu_title)
+        row_gpu.addWidget(self.lbl_gpu_title)
         row_gpu.addStretch()
         row_gpu.addWidget(self.lbl_gpu_val)
         metrics_layout.addLayout(row_gpu)
@@ -125,6 +166,19 @@ class OverlayWindow(QWidget):
         self.setMinimumWidth(250)
         self.adjustSize()
         self.setFixedHeight(self.height())
+        self.retranslate_ui()
+
+    def showEvent(self, event):
+        self.retranslate_ui()
+        super().showEvent(event)
+
+    def retranslate_ui(self):
+        lang = self.config.get("language", "uk")
+        t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
+        self.lbl_ram_title.setText(t["ram"])
+        self.lbl_cpu_title.setText(t["cpu"])
+        self.lbl_gpu_title.setText(t["gpu"])
+        self.lbl_ping_title.setText(t["ping"])
 
     def update_metrics(self, metrics):
         def update_label_style(label, color_style):
@@ -165,7 +219,9 @@ class OverlayWindow(QWidget):
         gpu_sleep = metrics.get('gpu_sleep', False)
         
         if gpu_sleep:
-            self.lbl_gpu_val.setText("0.0 %  (Sleep)")
+            lang = self.config.get("language", "uk")
+            t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
+            self.lbl_gpu_val.setText(f"0.0 %  ({t['sleep']})")
             update_label_style(self.lbl_gpu_val, "color: #00E676; font-weight: bold;")
         else:
             gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
@@ -204,15 +260,15 @@ class OverlayWindow(QWidget):
         
         self.ping_widget.setVisible(visible)
         
-        # Временно снимаем ограничения, чтобы layout мог честно рассчитать требуемую высоту
+        # Temporarily remove restrictions so the layout can accurately calculate the required height
         self.setMinimumHeight(0)
         self.setMaximumHeight(16777215)
         
-        # Заставляем макет обновить расчеты
+        # Force the layout to update calculations
         self.layout().activate()
         target_height = self.layout().sizeHint().height()
         
-        # Если окно еще не на экране, просто фиксируем рассчитанный размер
+        # If the window is not on screen yet, just fix the calculated size
         if not self.isVisible():
             self.setFixedHeight(target_height)
             return
@@ -229,30 +285,30 @@ class OverlayWindow(QWidget):
 
 
 
-    # Логика для перемещения окна (Drag-and-Drop) с магнитным прилипанием
+    # Window dragging logic (Drag-and-Drop) with magnetic snapping
     def mousePressEvent(self, event):
         if not self.is_pinned and event.button() == Qt.MouseButton.LeftButton:
-            # Смещение курсора относительно верхнего левого угла окна
+            # Cursor offset relative to the top-left corner of the window
             self.drag_offset = event.globalPosition().toPoint() - self.pos()
 
     def mouseMoveEvent(self, event):
         if not self.is_pinned and hasattr(self, 'drag_offset') and self.drag_offset is not None:
-            # Идеальная теоретическая позиция окна (без прилипания)
+            # Ideal theoretical window position (without snapping)
             target_pos = event.globalPosition().toPoint() - self.drag_offset
             new_x = target_pos.x()
             new_y = target_pos.y()
             
-            # Доступная геометрия текущего монитора (с учетом панели задач)
+            # Available geometry of the current monitor (including taskbar)
             screen_geom = self.screen().availableGeometry()
             snap_margin = 15
             
-            # Прилипание к левому и правому краю
+            # Snapping to left and right edges
             if abs(new_x - screen_geom.left()) <= snap_margin:
                 new_x = screen_geom.left()
             elif abs(new_x + self.width() - screen_geom.right()) <= snap_margin:
                 new_x = screen_geom.right() - self.width() + 1
                 
-            # Прилипание к верхнему и нижнему краю
+            # Snapping to top and bottom edges
             if abs(new_y - screen_geom.top()) <= snap_margin:
                 new_y = screen_geom.top()
             elif abs(new_y + self.height() - screen_geom.bottom()) <= snap_margin:
@@ -266,9 +322,12 @@ class OverlayWindow(QWidget):
             self.position_changed.emit(self.x(), self.y())
 
     def contextMenuEvent(self, event):
+        lang = self.config.get("language", "uk")
+        t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
+        
         menu = QMenu(self)
         
-        # Мягкие эффекты выделения для всего контекстного меню
+        # Soft hover effects for the entire context menu
         menu.setStyleSheet("""
             QMenu {
                 background-color: #1E1E1E;
@@ -283,7 +342,7 @@ class OverlayWindow(QWidget):
                 margin: 2px;
             }
             QMenu::item:selected {
-                background-color: rgba(0, 122, 255, 0.25); /* Более яркое прозрачное выделение */
+                background-color: rgba(0, 122, 255, 0.25); /* Brighter transparent selection */
                 color: #FFFFFF;
             }
             QMenu::separator {
@@ -293,28 +352,28 @@ class OverlayWindow(QWidget):
             }
         """)
         
-        return_action = QAction("Вернуться", self)
+        return_action = QAction(t["menu_return"], self)
         return_action.triggered.connect(self.request_return.emit)
         
-        pin_text = "Открепить" if self.is_pinned else "Закрепить"
+        pin_text = t["menu_unpin"] if self.is_pinned else t["menu_pin"]
         pin_action = QAction(pin_text, self)
         pin_action.triggered.connect(self.toggle_pin)
 
-        # Интегрированный ползунок прозрачности
+        # Integrated opacity slider
         opacity_widget = HoverContainer()
         opacity_widget.menu = menu
         opacity_layout = QHBoxLayout(opacity_widget)
         opacity_layout.setContentsMargins(14, 5, 14, 5)
         opacity_layout.setSpacing(10)
         
-        lbl_title = QLabel("Прозрачность:")
+        lbl_title = QLabel(t["menu_opacity"])
         lbl_title.setStyleSheet("color: #E0E0E0; background: transparent;")
         
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setMinimumWidth(180)
         slider.setRange(20, 100)
         
-        # Элегантный, тонкий дизайн ползунка
+        # Elegant, thin slider design
         slider.setStyleSheet("""
             QSlider {
                 background: transparent;
@@ -364,13 +423,13 @@ class OverlayWindow(QWidget):
         slider_action.setDefaultWidget(opacity_widget)
         opacity_widget.action = slider_action
 
-        hotkey_action = QAction("Сменить хоткей...", self)
+        hotkey_action = QAction(t["menu_hotkey"], self)
         hotkey_action.triggered.connect(self._on_hotkey_change)
         
-        exit_action = QAction("Закрыть приложение", self)
+        exit_action = QAction(t["menu_exit"], self)
         exit_action.triggered.connect(self.request_exit.emit)
         
-        # Кастомная кнопка для переключения единиц измерения сети
+        # Custom button to switch network measurement units
         network_widget = HoverContainer()
         network_widget.menu = menu
         network_layout = QHBoxLayout(network_widget)
@@ -396,9 +455,9 @@ class OverlayWindow(QWidget):
         
         def update_network_btn_text():
             if self.use_mbps:
-                btn_network.setText("Переключить на Мбайт/с")
+                btn_network.setText(t["menu_network_mb"])
             else:
-                btn_network.setText("Переключить на Мбит/с")
+                btn_network.setText(t["menu_network_mbps"])
                 
         update_network_btn_text()
         
@@ -425,9 +484,11 @@ class OverlayWindow(QWidget):
         menu.exec(event.globalPos())
 
     def _on_hotkey_change(self):
+        lang = self.config.get("language", "uk")
+        t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
         new_hotkey, ok = QInputDialog.getText(
-            self, "Сменить хоткей",
-            "Введите новую комбинацию клавиш\n(например: alt+f10, ctrl+shift+o):",
+            self, t["dialog_hotkey_title"],
+            t["dialog_hotkey_text"],
             text="alt+f10"
         )
         if ok and new_hotkey.strip():

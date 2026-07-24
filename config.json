@@ -1,5 +1,10 @@
 {
-  "hotkey": "alt+f11",
-  "opacity": 1.0,
-  "ping_enabled": true
+  "hotkey": "alt+f10",
+  "opacity": 0.68,
+  "ping_enabled": true,
+  "is_pinned": false,
+  "window_x": 1670,
+  "window_y": 166,
+  "use_mbps": false,
+  "language": "en"
 }

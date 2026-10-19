@@ -13,7 +13,14 @@ A clean, customizable, frameless desktop overlay for real-time hardware performa
 * **Persistent State**: Automatically saves exact window X/Y coordinates, pinning state, transparency, and network preferences to `config.json` across restarts.
 * **Zero-Lag Architecture**: Asynchronous background threads for hardware polling and network diagnostics ensure your workflow or gaming is never interrupted.
 
-## How to Install & Run
+## Quick Start (Standalone Executable)
+
+No Python installation required! You can download and run the ready-to-use standalone executable:
+
+1. Download `RAM-Visual.exe` from the latest **[GitHub Releases](https://github.com/Daniil-02/RAM-Visual/releases)** (or take it directly from the `release/` directory in this repository).
+2. Right-click `RAM-Visual.exe` and select **Run as Administrator** (recommended for hardware temperature and wattage access).
+
+## How to Install & Run from Source
 
 1. Clone the repository:
    ```bash

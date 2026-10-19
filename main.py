@@ -50,7 +50,8 @@ class AppManager:
         self.main_window.show()
         
     def load_styles(self):
-        style_path = os.path.join(os.path.dirname(__file__), 'styles', 'theme.qss')
+        base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        style_path = os.path.join(base_dir, 'styles', 'theme.qss')
         if os.path.exists(style_path):
             with open(style_path, 'r', encoding='utf-8') as f:
                 self.app.setStyleSheet(f.read())
@@ -242,7 +243,13 @@ class AppManager:
         sys.exit(self.app.exec())
 
 def ensure_hardware_monitor_dll():
-    dll_path = os.path.join(os.path.dirname(__file__), 'LibreHardwareMonitorLib.dll')
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    dll_path = os.path.join(base_dir, 'LibreHardwareMonitorLib.dll')
+    if os.path.exists(dll_path):
+        return
+        
+    target_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else base_dir
+    dll_path = os.path.join(target_dir, 'LibreHardwareMonitorLib.dll')
     if not os.path.exists(dll_path):
         print("Downloading LibreHardwareMonitorLib.dll...")
         try:

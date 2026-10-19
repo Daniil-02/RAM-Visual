@@ -225,10 +225,12 @@ class SystemMonitor(QThread):
             import clr
             import sys
             import os
-            # Add project root to DLL search paths
-            project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if project_dir not in sys.path:
-                sys.path.append(project_dir)
+            # Add project root and bundled directories to DLL search paths
+            base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else base_dir
+            for p in (base_dir, exe_dir, os.path.dirname(os.path.abspath(__file__))):
+                if p not in sys.path:
+                    sys.path.append(p)
                 
             clr.AddReference("LibreHardwareMonitorLib")
             from LibreHardwareMonitor.Hardware import Computer

@@ -103,13 +103,11 @@ class OverlayWindow(QWidget):
         self.setFont(win_font)
         
         if hasattr(self, "lbl_name"):
-            for lbl in (self.lbl_name, self.lbl_ram_val, self.lbl_ram_title,
-                        self.lbl_cpu_val, self.lbl_cpu_title, self.lbl_gpu_val,
-                        self.lbl_gpu_title, self.lbl_ping_val, self.lbl_ping_title):
-                f = lbl.font()
-                ps = f.pointSize()
-                f.setPointSize(max(9, ps if ps > 0 else safe_size))
-                lbl.setFont(f)
+            self.lbl_name.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+            for val_lbl in (self.lbl_ram_val, self.lbl_cpu_val, self.lbl_gpu_val, self.lbl_ping_val):
+                val_lbl.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+            for title_lbl in (self.lbl_ram_title, self.lbl_cpu_title, self.lbl_gpu_title, self.lbl_ping_title):
+                title_lbl.setFont(QFont("Segoe UI", 9))
 
     def restore_position(self):
         """Ensure window position is within visible primary screen bounds with safe fallback."""
@@ -226,6 +224,7 @@ class OverlayWindow(QWidget):
         
         self.lbl_ping_val = QLabel("---")
         self.lbl_ping_val.setProperty("class", "MetricValue")
+        self.lbl_ping_val.setStyleSheet("color: #00E676; font-weight: bold;")
         self.lbl_ping_title = QLabel("PING")
         self.lbl_ping_title.setProperty("class", "MetricLabel")
         
@@ -337,7 +336,24 @@ class OverlayWindow(QWidget):
                 unit = "Mbps"
             else:
                 unit = "MB/s"
-            self.lbl_ping_val.setText(f"{metrics['ping']} (↓ {speed:.1f} {unit})")
+            ping_val = str(metrics['ping'])
+            self.lbl_ping_val.setText(f"{ping_val} (↓ {speed:.1f} {unit})")
+            
+            # Dynamic styling matching MetricValue size and alerts
+            ping_ms = None
+            if "ms" in ping_val.lower():
+                try:
+                    num_part = ping_val.lower().replace("ms", "").replace("<", "").strip()
+                    ping_ms = float(num_part)
+                except ValueError:
+                    pass
+                    
+            if ping_val == "Err" or (ping_ms is not None and ping_ms >= 150):
+                update_label_style(self.lbl_ping_val, "color: #FF2A4B; font-weight: bold;")
+            elif ping_ms is not None and ping_ms >= 80:
+                update_label_style(self.lbl_ping_val, "color: #FFC107; font-weight: bold;")
+            else:
+                update_label_style(self.lbl_ping_val, "color: #00E676; font-weight: bold;")
 
     def toggle_ping_visibility(self, visible):
         if hasattr(self, '_ping_visible') and self._ping_visible == visible:

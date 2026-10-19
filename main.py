@@ -83,17 +83,22 @@ class AppManager:
         # Apply network speed unit setting
         self.overlay.use_mbps = self.config.get("use_mbps", False)
         
-        # Restore position from config
-        wx = self.config.get("window_x")
-        wy = self.config.get("window_y")
-        if wx is not None and wy is not None:
-            self.overlay.move(wx, wy)
-        elif self.last_overlay_pos is not None:
-            self.overlay.move(self.last_overlay_pos)
+        # Restore position from config with screen bounds clamping
+        self.overlay.restore_position()
  
-        # Apply opacity from config
-        self.overlay.setWindowOpacity(self.config["opacity"])
+        # Apply opacity from config (strictly clamped between 0.2 and 1.0)
+        raw_opacity = self.config.get("opacity", 1.0)
+        try:
+            opacity = float(raw_opacity)
+        except (ValueError, TypeError):
+            opacity = 1.0
+        opacity = max(0.2, min(1.0, opacity))
+        self.config["opacity"] = opacity
+        self.overlay.setWindowOpacity(opacity)
+        
         self.overlay.show()
+        self.overlay.raise_()
+        self.overlay.activateWindow()
         self.overlay.toggle_ping_visibility(self.main_window.is_ping_enabled())
         
         # Start metric collector
@@ -115,7 +120,10 @@ class AppManager:
                 if self.monitor:
                     self.monitor.pause()
             else:
+                self.overlay.restore_position()
                 self.overlay.show()
+                self.overlay.raise_()
+                self.overlay.activateWindow()
                 if self.monitor:
                     self.monitor.resume()
 
@@ -130,6 +138,11 @@ class AppManager:
 
     def on_opacity_changed(self, opacity):
         """Change overlay opacity and save to config."""
+        try:
+            opacity = float(opacity)
+        except (ValueError, TypeError):
+            opacity = 1.0
+        opacity = max(0.2, min(1.0, opacity))
         if self.overlay:
             self.overlay.setWindowOpacity(opacity)
         self.config["opacity"] = opacity

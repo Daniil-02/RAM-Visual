@@ -25,6 +25,11 @@ def load_config():
                 config.update(saved)
                 if config.get("language") not in ("uk", "en"):
                     config["language"] = "uk"
+                try:
+                    opacity = float(config.get("opacity", 1.0))
+                    config["opacity"] = max(0.2, min(1.0, opacity))
+                except (ValueError, TypeError):
+                    config["opacity"] = 1.0
                 return config
     except Exception:
         pass
@@ -35,6 +40,11 @@ def save_config(config):
     try:
         if config.get("language") not in ("uk", "en"):
             config["language"] = "uk"
+        try:
+            opacity = float(config.get("opacity", 1.0))
+            config["opacity"] = max(0.2, min(1.0, opacity))
+        except (ValueError, TypeError):
+            config["opacity"] = 1.0
         with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
     except Exception as e:

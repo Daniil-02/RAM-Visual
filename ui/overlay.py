@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFrame, QMenu, QInputDialog, QSlider, QWidgetAction, QPushButton
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QFont, QGuiApplication
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, pyqtProperty
 
 class HoverContainer(QWidget):
@@ -70,11 +70,87 @@ class OverlayWindow(QWidget):
     def __init__(self, process_name, config):
         super().__init__()
         self.process_name = process_name
-        self.config = config
+        self.config = config if isinstance(config, dict) else {}
+        
+        # Verify and clamp opacity between 0.2 and 1.0 (never 0.0)
+        raw_opacity = self.config.get("opacity", 1.0)
+        try:
+            opacity = float(raw_opacity)
+        except (ValueError, TypeError):
+            opacity = 1.0
+        self.initial_opacity = max(0.2, min(1.0, opacity))
+        self.config["opacity"] = self.initial_opacity
+        self.setWindowOpacity(self.initial_opacity)
+        
         self.init_ui()
         self.drag_offset = None
-        self.is_pinned = False
-        self.use_mbps = False
+        self.is_pinned = self.config.get("is_pinned", False)
+        self.use_mbps = self.config.get("use_mbps", False)
+        self.restore_position()
+
+    def apply_safe_font(self):
+        """Ensure all fonts have a valid positive point size (> 0) to avoid QFont::setPointSize warnings."""
+        configured_font_size = self.config.get("font_size", 10)
+        try:
+            pt_size = int(configured_font_size)
+        except (ValueError, TypeError):
+            pt_size = 10
+        safe_size = max(9, pt_size)
+        
+        win_font = self.font()
+        win_pt = win_font.pointSize()
+        win_font.setPointSize(max(9, win_pt if win_pt > 0 else safe_size))
+        self.setFont(win_font)
+        
+        if hasattr(self, "lbl_name"):
+            for lbl in (self.lbl_name, self.lbl_ram_val, self.lbl_ram_title,
+                        self.lbl_cpu_val, self.lbl_cpu_title, self.lbl_gpu_val,
+                        self.lbl_gpu_title, self.lbl_ping_val, self.lbl_ping_title):
+                f = lbl.font()
+                ps = f.pointSize()
+                f.setPointSize(max(9, ps if ps > 0 else safe_size))
+                lbl.setFont(f)
+
+    def restore_position(self):
+        """Ensure window position is within visible primary screen bounds with safe fallback."""
+        primary_screen = QGuiApplication.primaryScreen()
+        screen_rect = primary_screen.availableGeometry() if primary_screen else None
+        
+        self.adjustSize()
+        w = max(self.width(), 250)
+        
+        if screen_rect:
+            default_x = screen_rect.x() + screen_rect.width() - w - 20
+            default_y = screen_rect.y() + 20
+        else:
+            default_x = 20
+            default_y = 20
+            
+        wx = self.config.get("window_x")
+        wy = self.config.get("window_y")
+        
+        is_valid = False
+        if wx is not None and wy is not None:
+            try:
+                wx = int(wx)
+                wy = int(wy)
+                if screen_rect:
+                    # Valid if coordinates are not negative and window is visible on screen
+                    if (screen_rect.x() <= wx <= screen_rect.x() + screen_rect.width() - 40 and
+                        screen_rect.y() <= wy <= screen_rect.y() + screen_rect.height() - 40 and
+                        wx >= 0 and wy >= 0):
+                        is_valid = True
+                elif wx >= 0 and wy >= 0:
+                    is_valid = True
+            except (ValueError, TypeError):
+                is_valid = False
+                
+        if is_valid:
+            self.move(wx, wy)
+        else:
+            self.move(default_x, default_y)
+            self.config["window_x"] = default_x
+            self.config["window_y"] = default_y
 
     def init_ui(self):
         self.setObjectName("OverlayWindow")
@@ -166,6 +242,7 @@ class OverlayWindow(QWidget):
         self.setMinimumWidth(250)
         self.adjustSize()
         self.setFixedHeight(self.height())
+        self.apply_safe_font()
         self.retranslate_ui()
 
     def showEvent(self, event):
@@ -213,12 +290,13 @@ class OverlayWindow(QWidget):
         else:
             update_label_style(self.lbl_cpu_val, "color: #00E676; font-weight: bold;")
         
-        gpu_val = metrics['gpu']
+        gpu_val = metrics.get('gpu', 0.0)
         gpu_temp = metrics.get('gpu_temp')
         gpu_power = metrics.get('gpu_power')
         gpu_sleep = metrics.get('gpu_sleep', False)
         
-        if gpu_sleep:
+        is_sleep = gpu_sleep or str(gpu_val).strip().lower() == 'sleep'
+        if is_sleep:
             lang = self.config.get("language", "uk")
             t = TRANSLATIONS.get(lang, TRANSLATIONS["uk"])
             self.lbl_gpu_val.setText(f"0.0 %  ({t['sleep']})")
@@ -227,10 +305,20 @@ class OverlayWindow(QWidget):
             gpu_temp_str = f"({gpu_temp:.0f}°C)" if gpu_temp is not None else "(N/A °C)"
             gpu_power_str = f" {gpu_power:.0f}W" if gpu_power is not None else ""
             
-            if gpu_val < 0:
+            is_na = False
+            if isinstance(gpu_val, str) and gpu_val.strip().upper() == "N/A":
+                is_na = True
+            elif isinstance(gpu_val, (int, float)) and gpu_val < 0:
+                is_na = True
+                
+            if is_na:
                 self.lbl_gpu_val.setText(f"N/A  {gpu_temp_str}{gpu_power_str}")
             else:
-                self.lbl_gpu_val.setText(f"{gpu_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
+                try:
+                    num_val = float(gpu_val)
+                    self.lbl_gpu_val.setText(f"{num_val:.1f} %  {gpu_temp_str}{gpu_power_str}")
+                except (ValueError, TypeError):
+                    self.lbl_gpu_val.setText(f"{gpu_val}  {gpu_temp_str}{gpu_power_str}")
                 
             if gpu_temp is not None:
                 if gpu_temp >= 85:
@@ -299,20 +387,22 @@ class OverlayWindow(QWidget):
             new_y = target_pos.y()
             
             # Available geometry of the current monitor (including taskbar)
-            screen_geom = self.screen().availableGeometry()
-            snap_margin = 15
-            
-            # Snapping to left and right edges
-            if abs(new_x - screen_geom.left()) <= snap_margin:
-                new_x = screen_geom.left()
-            elif abs(new_x + self.width() - screen_geom.right()) <= snap_margin:
-                new_x = screen_geom.right() - self.width() + 1
+            screen = self.screen() or QGuiApplication.primaryScreen()
+            if screen:
+                screen_geom = screen.availableGeometry()
+                snap_margin = 15
                 
-            # Snapping to top and bottom edges
-            if abs(new_y - screen_geom.top()) <= snap_margin:
-                new_y = screen_geom.top()
-            elif abs(new_y + self.height() - screen_geom.bottom()) <= snap_margin:
-                new_y = screen_geom.bottom() - self.height() + 1
+                # Snapping to left and right edges
+                if abs(new_x - screen_geom.left()) <= snap_margin:
+                    new_x = screen_geom.left()
+                elif abs(new_x + self.width() - screen_geom.right()) <= snap_margin:
+                    new_x = screen_geom.right() - self.width() + 1
+                    
+                # Snapping to top and bottom edges
+                if abs(new_y - screen_geom.top()) <= snap_margin:
+                    new_y = screen_geom.top()
+                elif abs(new_y + self.height() - screen_geom.bottom()) <= snap_margin:
+                    new_y = screen_geom.bottom() - self.height() + 1
             
             self.move(new_x, new_y)
 

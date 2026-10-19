@@ -3,11 +3,19 @@ import time
 import ctypes
 from PyQt6.QtCore import QThread, pyqtSignal
 import win32pdh
-import pynvml
 import subprocess
 import os
 import threading
 import re
+import warnings
+
+# Suppress pynvml deprecation and future warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module=r".*pynvml.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module=r".*pynvml.*")
+try:
+    import pynvml
+except ImportError:
+    pynvml = None
 
 # Shared memory structure of the CoreTemp utility to read metrics without external libraries
 class CoreTempSharedDataEx(ctypes.Structure):
@@ -62,13 +70,16 @@ class SystemMonitor(QThread):
         self.gpu_counters = []
         self._setup_gpu_counters()
         
-        # Setup NVML (NVIDIA) as a fallback
+        # Setup NVML (NVIDIA) as a fallback with safe non-blocking handling
         self.nvml_inited = False
-        try:
-            pynvml.nvmlInit()
-            self.nvml_inited = True
-        except Exception as e:
-            pass
+        if pynvml:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    pynvml.nvmlInit()
+                self.nvml_inited = True
+            except Exception:
+                self.nvml_inited = False
 
         self.ping_enabled = True
         self.last_net_bytes = psutil.net_io_counters().bytes_recv
@@ -196,11 +207,11 @@ class SystemMonitor(QThread):
             return -1.0
 
     def get_gpu_usage_nvml(self):
-        if not self.nvml_inited:
+        if not self.nvml_inited or not pynvml:
             return -1.0
         try:
-            deviceCount = pynvml.nvmlDeviceGetCount()
-            if deviceCount > 0:
+            device_count = pynvml.nvmlDeviceGetCount()
+            if device_count > 0:
                 handle = pynvml.nvmlDeviceGetHandleByIndex(0)
                 util = pynvml.nvmlDeviceGetUtilizationRates(handle)
                 return float(util.gpu)
@@ -288,7 +299,7 @@ class SystemMonitor(QThread):
                 except Exception:
                     continue
 
-            if self.nvml_inited:
+            if self.nvml_inited and pynvml:
                 try:
                     if pynvml.nvmlDeviceGetCount() > 0:
                         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
@@ -333,7 +344,7 @@ class SystemMonitor(QThread):
                 except Exception:
                     continue
 
-            if self.nvml_inited:
+            if self.nvml_inited and pynvml:
                 try:
                     if pynvml.nvmlDeviceGetCount() > 0:
                         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
@@ -346,9 +357,12 @@ class SystemMonitor(QThread):
             return None
 
         def get_gpu_load():
+            # 1. Process-specific GPU engine load via Windows PDH
             load = self.get_gpu_usage_pdh()
-            if load > 0: return load
+            if load >= 0:
+                return load, False
             
+            # 2. Hardware sensors via LibreHardwareMonitor
             for hw in get_lhm_gpus():
                 try:
                     hw.Update()
@@ -356,15 +370,28 @@ class SystemMonitor(QThread):
                         if str(sensor.SensorType) == 'Load':
                             name = str(sensor.Name).lower()
                             if 'core' in name or 'gpu' in name:
-                                if sensor.Value is not None and float(sensor.Value) > 0:
-                                    return float(sensor.Value)
+                                if sensor.Value is not None and float(sensor.Value) >= 0:
+                                    return float(sensor.Value), False
                 except Exception:
                     continue
             
-            load = self.get_gpu_usage_nvml()
-            if load > 0: return load
+            # 3. NVML fallback (NVIDIA)
+            if self.nvml_inited and pynvml:
+                try:
+                    device_count = pynvml.nvmlDeviceGetCount()
+                    if device_count > 0:
+                        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                        return float(util.gpu), False
+                except Exception:
+                    # NVML query failed; dedicated GPU is likely asleep in a hybrid laptop setup
+                    return 0.0, True
             
-            return -1.0
+            # 4. Check for laptop hybrid setup (sleeping dGPU)
+            if has_igpu():
+                return 0.0, True
+                
+            return -1.0, False
 
         loop_count = 0
         try:
@@ -411,24 +438,24 @@ class SystemMonitor(QThread):
                         total_cpu = total_cpu / self.cpu_count
                     
                     try:
-                        gpu = get_gpu_load()
+                        gpu_load, is_gpu_sleep = get_gpu_load()
                         cpu_temp = get_cpu_temp()
-                        gpu_temp = get_gpu_temp(cpu_temp)
+                        gpu_temp = None if is_gpu_sleep else get_gpu_temp(cpu_temp)
                         cpu_power = get_cpu_power()
                         
-                        if has_igpu():
+                        if is_gpu_sleep:
+                            gpu = 0.0
+                            gpu_power = 0.0
+                        elif has_igpu():
+                            gpu = gpu_load if gpu_load >= 0 else 0.0
                             gpu_power = cpu_power if cpu_power is not None else 0.0
                         else:
+                            gpu = gpu_load
                             gpu_power = get_gpu_power()
                             if gpu_power is None or gpu_power <= 0:
                                 gpu_power = 0.0
-                        
-                        if gpu < 0:
-                            gpu = 0.0
-                            
-                        is_gpu_sleep = False # Desired sleep state handled implicitly if needed
                     except Exception:
-                        gpu = 0.0
+                        gpu = -1.0
                         cpu_temp = gpu_temp = cpu_power = None
                         gpu_power = 0.0
                         is_gpu_sleep = False
@@ -485,8 +512,9 @@ class SystemMonitor(QThread):
             try:
                 win32pdh.CloseQuery(self.hq)
             except: pass
-        if self.nvml_inited:
+        if self.nvml_inited and pynvml:
             try:
                 pynvml.nvmlShutdown()
             except: pass
+            self.nvml_inited = False
         self.wait()
